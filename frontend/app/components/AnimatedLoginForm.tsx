@@ -89,7 +89,7 @@ export default function AnimatedLoginForm({ onLogin, onForgotPassword }: Animate
           {/* Logo */}
           <div className="text-center mb-6">
             <img 
-              src="/logo.png" 
+              src="https://pub-8f7d5f81a3294be18dbe97ddb794a4ae.r2.dev/logo.png" 
               alt="Company Logo" 
               className="mx-auto h-16 w-auto object-contain"
             />

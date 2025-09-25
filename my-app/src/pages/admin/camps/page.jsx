@@ -99,7 +99,7 @@ export default function CampManagement() {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('${API_BASE_URL}/api/employees', {
+      const response = await fetch(`${API_BASE_URL}/api/employees`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -164,7 +164,7 @@ export default function CampManagement() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('${API_BASE_URL}/api/camps', {
+      const response = await fetch(`${API_BASE_URL}/api/camps`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

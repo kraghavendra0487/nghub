@@ -64,7 +64,7 @@ export default function CustomerManagement() {
       }
 
       try {
-        const response = await fetch('${API_BASE_URL}/api/profile', {
+        const response = await fetch(`${API_BASE_URL}/api/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -93,7 +93,7 @@ export default function CustomerManagement() {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('${API_BASE_URL}/api/customers', {
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -112,7 +112,7 @@ export default function CustomerManagement() {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('${API_BASE_URL}/api/employees', {
+      const response = await fetch(`${API_BASE_URL}/api/employees`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -179,7 +179,7 @@ export default function CustomerManagement() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('${API_BASE_URL}/api/customers', {
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

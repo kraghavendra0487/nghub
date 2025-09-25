@@ -75,7 +75,7 @@ export default function AdminNavbar({ user, isDarkMode, setIsDarkMode, currentPa
         <div className={`flex items-center justify-between h-16 px-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <img className="h-8 w-8" src="/logo.png" alt="Logo" />
+              <img className="h-8 w-8" src="https://pub-8f7d5f81a3294be18dbe97ddb794a4ae.r2.dev/logo.png" alt="Logo" />
             </div>
             <div className="ml-3">
               <h1 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>

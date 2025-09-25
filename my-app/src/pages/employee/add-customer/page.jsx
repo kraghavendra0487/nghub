@@ -28,7 +28,7 @@ export default function AddCustomer() {
 
       try {
         // Verify token with backend
-        const response = await fetch('${API_BASE_URL}/api/profile', {
+        const response = await fetch(`${API_BASE_URL}/api/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -107,7 +107,7 @@ export default function AddCustomer() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('${API_BASE_URL}/api/customers', {
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

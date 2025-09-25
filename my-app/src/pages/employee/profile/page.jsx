@@ -17,7 +17,7 @@ export default function EmployeeProfilePage() {
       }
 
       try {
-        const response = await fetch('${API_BASE_URL}/api/profile', {
+        const response = await fetch(`${API_BASE_URL}/api/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

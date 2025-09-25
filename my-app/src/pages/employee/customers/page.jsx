@@ -78,7 +78,7 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('${API_BASE_URL}/api/customers', {
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -209,7 +209,7 @@ export default function CustomersPage() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch('${API_BASE_URL}/api/profile', {
+        const response = await fetch(`${API_BASE_URL}/api/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()

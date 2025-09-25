@@ -30,7 +30,7 @@ function App() {
     const token = localStorage.getItem('token')
     if (token) {
       // Verify token with backend
-      fetch('${API_BASE_URL}/api/profile', {
+      fetch(`${API_BASE_URL}/api/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
