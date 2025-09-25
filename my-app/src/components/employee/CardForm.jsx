@@ -46,7 +46,7 @@ export default function CardForm({ customerId, customerName, onSuccess, onError 
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}/card`, {
+      const response = await fetch(`/api/customers/${customerId}/card`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

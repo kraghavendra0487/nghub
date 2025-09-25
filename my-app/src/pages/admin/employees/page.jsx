@@ -46,7 +46,7 @@ export default function EmployeeManagement() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -75,7 +75,7 @@ export default function EmployeeManagement() {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees`, {
+      const response = await fetch('/api/employees', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -95,7 +95,7 @@ export default function EmployeeManagement() {
   const fetchEmployeeCustomers = async (employeeId) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees/${employeeId}/customers`, {
+      const response = await fetch(`/api/employees/${employeeId}/customers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -133,7 +133,7 @@ export default function EmployeeManagement() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees/${employeeId}`, {
+      const response = await fetch(`/api/employees/${employeeId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -159,7 +159,7 @@ export default function EmployeeManagement() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/admin/register`, {
+      const response = await fetch('/api/admin/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -190,7 +190,7 @@ export default function EmployeeManagement() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees/${editingEmployee.id}`, {
+      const response = await fetch(`/api/employees/${editingEmployee.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

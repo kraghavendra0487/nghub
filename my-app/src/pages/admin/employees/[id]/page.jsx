@@ -23,7 +23,7 @@ export default function EmployeeDetailsPage() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -52,7 +52,7 @@ export default function EmployeeDetailsPage() {
   const fetchEmployee = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees/${id}`, {
+      const response = await fetch(`/api/employees/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -75,7 +75,7 @@ export default function EmployeeDetailsPage() {
   const fetchEmployeeCustomers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees/${id}/customers`, {
+      const response = await fetch(`/api/employees/${id}/customers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

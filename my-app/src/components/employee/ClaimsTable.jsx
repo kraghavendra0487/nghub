@@ -15,7 +15,7 @@ export default function ClaimsTable({ claims, cardId, onRefresh }) {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/claims/${claimId}`, {
+      const response = await fetch(`/api/claims/${claimId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

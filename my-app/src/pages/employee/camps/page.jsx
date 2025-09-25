@@ -18,7 +18,7 @@ export default function CampsPage() {
   const fetchCamps = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employee/camps`, {
+      const response = await fetch('/api/employee/camps', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -55,7 +55,7 @@ export default function CampsPage() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()

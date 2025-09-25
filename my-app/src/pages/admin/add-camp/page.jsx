@@ -31,7 +31,7 @@ export default function AddCampPage() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -60,7 +60,7 @@ export default function AddCampPage() {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees`, {
+      const response = await fetch('/api/employees', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -111,7 +111,7 @@ export default function AddCampPage() {
       console.log('Sending camp data:', campData)
       console.log('assigned_to format:', campData.assigned_to)
       
-      const response = await fetch(`${API_BASE_URL}/api/camps`, {
+      const response = await fetch('/api/camps', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -16,7 +16,7 @@ export default function AdminDashboard() {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees`, {
+      const response = await fetch('/api/employees', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -33,7 +33,7 @@ export default function AdminDashboard() {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers`, {
+      const response = await fetch('/api/customers', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
   const fetchCamps = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/camps`, {
+      const response = await fetch('/api/camps', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -73,7 +73,7 @@ export default function AdminDashboard() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()

@@ -64,7 +64,7 @@ export default function CustomerManagement() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -93,7 +93,7 @@ export default function CustomerManagement() {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers`, {
+      const response = await fetch('/api/customers', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -112,7 +112,7 @@ export default function CustomerManagement() {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employees`, {
+      const response = await fetch('/api/employees', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -153,7 +153,7 @@ export default function CustomerManagement() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}`, {
+      const response = await fetch(`/api/customers/${customerId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -179,7 +179,7 @@ export default function CustomerManagement() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers`, {
+      const response = await fetch('/api/customers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,7 +220,7 @@ export default function CustomerManagement() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
+      const response = await fetch(`/api/customers/${editingCustomer.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -275,7 +275,7 @@ export default function CustomerManagement() {
   const fetchCustomerCards = async (customerId) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}/card`, {
+      const response = await fetch(`/api/customers/${customerId}/card`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -294,7 +294,7 @@ export default function CustomerManagement() {
   const fetchClaims = async (cardId) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/cards/${cardId}/claims`, {
+      const response = await fetch(`/api/cards/${cardId}/claims`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()

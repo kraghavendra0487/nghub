@@ -37,14 +37,14 @@ export default function CustomersPage() {
       
       for (const customer of customers) {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/customers/${customer.id}/card`, {
+          const response = await fetch(`/api/customers/${customer.id}/card`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
           if (response.ok) {
             const cardData = await response.json()
             if (cardData.card) {
-              const claimsResponse = await fetch(`${API_BASE_URL}/api/cards/${cardData.card.id}/claims`, {
+              const claimsResponse = await fetch(`/api/cards/${cardData.card.id}/claims`, {
                 headers: { 'Authorization': `Bearer ${token}` }
               })
               
@@ -78,7 +78,7 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers`, {
+      const response = await fetch('/api/customers', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -163,7 +163,7 @@ export default function CustomersPage() {
     if (card) {
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch(`${API_BASE_URL}/api/cards/${card.id}/claims`, {
+        const response = await fetch(`/api/cards/${card.id}/claims`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         
@@ -209,7 +209,7 @@ export default function CustomersPage() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()
@@ -569,7 +569,7 @@ export default function CustomersPage() {
               onSubmit={async (data) => {
                 try {
                   const token = localStorage.getItem('token')
-                  const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
+                  const response = await fetch(`/api/customers/${editingCustomer.id}`, {
                     method: 'PUT',
                     headers: {
                       'Content-Type': 'application/json',
@@ -658,7 +658,7 @@ export default function CustomersPage() {
 
                   try {
                     const token = localStorage.getItem('token')
-                    const response = await fetch(`${API_BASE_URL}/api/cards/${selectedCard.id}/claims`, {
+                    const response = await fetch(`/api/cards/${selectedCard.id}/claims`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

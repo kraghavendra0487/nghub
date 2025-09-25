@@ -53,7 +53,7 @@ export default function EmployeeDashboard() {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers`, {
+      const response = await fetch('/api/customers', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -70,7 +70,7 @@ export default function EmployeeDashboard() {
   const fetchCamps = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/employee/camps`, {
+      const response = await fetch('/api/employee/camps', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
@@ -95,14 +95,14 @@ export default function EmployeeDashboard() {
       
       for (const customer of customers) {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/customers/${customer.id}/card`, {
+          const response = await fetch(`/api/customers/${customer.id}/card`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
           if (response.ok) {
             const cardData = await response.json()
             if (cardData.card) {
-              const claimsResponse = await fetch(`${API_BASE_URL}/api/cards/${cardData.card.id}/claims`, {
+              const claimsResponse = await fetch(`/api/cards/${cardData.card.id}/claims`, {
                 headers: { 'Authorization': `Bearer ${token}` }
               })
               
@@ -285,7 +285,7 @@ export default function EmployeeDashboard() {
   const updateCustomer = async (customerData) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
+      const response = await fetch(`/api/customers/${editingCustomer.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -314,7 +314,7 @@ export default function EmployeeDashboard() {
   const deleteCustomer = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
+      const response = await fetch(`/api/customers/${editingCustomer.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -357,7 +357,7 @@ export default function EmployeeDashboard() {
       setSelectedCustomerName(customer.customer_name)
       
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}/card`, {
+      const response = await fetch(`/api/customers/${customerId}/card`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -415,7 +415,7 @@ export default function EmployeeDashboard() {
       setSelectedCustomerName(customer.customer_name)
       
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}/card`, {
+      const response = await fetch(`/api/customers/${customerId}/card`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -424,7 +424,7 @@ export default function EmployeeDashboard() {
       if (response.ok) {
         const data = await response.json()
         if (data.card) {
-          const claimsResponse = await fetch(`${API_BASE_URL}/api/cards/${data.card.id}/claims`, {
+          const claimsResponse = await fetch(`/api/cards/${data.card.id}/claims`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -497,7 +497,7 @@ export default function EmployeeDashboard() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        const response = await fetch('/api/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()
@@ -987,7 +987,7 @@ export default function EmployeeDashboard() {
 
                   try {
                     const token = localStorage.getItem('token')
-                    const response = await fetch(`${API_BASE_URL}/api/cards/${selectedCard.id}/claims`, {
+                    const response = await fetch(`/api/cards/${selectedCard.id}/claims`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
