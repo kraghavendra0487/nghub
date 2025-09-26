@@ -56,8 +56,7 @@ const AppContent = () => {
   }
 
   return (
-    <Router>
-      <Routes>
+    <Routes>
         {/* Public Routes */}
         <Route path="/" element={
           <RouteGuard isPrivate={false}>
@@ -141,16 +140,17 @@ const AppContent = () => {
         {/* Catch all route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Router>
   );
 };
 
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <Router>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </Router>
     </ErrorBoundary>
   );
 }
