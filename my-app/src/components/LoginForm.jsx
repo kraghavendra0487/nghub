@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import API_BASE_URL from '../config/api.js'
+import { validateEmail, validatePassword, handleApiError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 
 const LoginForm = ({ onLogin, onForgotPassword }) => {
   const [formData, setFormData] = useState({
@@ -21,25 +21,59 @@ const LoginForm = ({ onLogin, onForgotPassword }) => {
     setLoading(true)
     setError('')
 
+    // Validate form data
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields')
+      setLoading(false)
+      return
+    }
+
+    // Validate email format
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address')
+      setLoading(false)
+      return
+    }
+
+    // Validate password
+    if (!validatePassword(formData.password)) {
+      setError('Password must be at least 6 characters long')
+      setLoading(false)
+      return
+    }
+
     try {
+      console.log('Attempting login with:', { email: formData.email })
+      
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password
+        }),
       })
 
+      console.log('Login response status:', response.status)
+
       const data = await response.json()
+      console.log('Login response data:', data)
 
       if (response.ok) {
-        localStorage.setItem('token', data.token)
-        onLogin(data.user)
+        showSuccessToast('Login successful!')
+        onLogin(data.token, data.user)
       } else {
-        setError(data.error || 'Login failed')
+        const errorMessage = data.error || 'Login failed'
+        setError(errorMessage)
+        showErrorToast(errorMessage)
       }
     } catch (err) {
-      setError('Network error. Please try again.')
+      console.error('Login error:', err)
+      const errorMessage = handleApiError(err, 'Login failed. Please try again.')
+      setError(errorMessage)
+      showErrorToast(errorMessage)
     } finally {
       setLoading(false)
     }

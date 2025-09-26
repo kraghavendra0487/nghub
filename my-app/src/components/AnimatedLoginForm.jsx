@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import API_BASE_URL from '../config/api.js';
+import { validateEmail, validatePassword, handleApiError, showErrorToast, showSuccessToast } from '../utils/errorHandler';
 
 const AnimatedLoginForm = ({ onLogin, onForgotPassword }) => {
   const [formData, setFormData] = useState({
@@ -22,25 +22,60 @@ const AnimatedLoginForm = ({ onLogin, onForgotPassword }) => {
     setLoading(true);
     setError('');
 
+    // Validate form data
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
+
+    // Validate email format
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
+
+    // Validate password
+    if (!validatePassword(formData.password)) {
+      setError('Password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('Attempting login with:', { email: formData.email });
+      
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password
+        }),
       });
 
+      console.log('Login response status:', response.status);
+
       const data = await response.json();
+      console.log('Login response data:', data);
 
       if (response.ok) {
         localStorage.setItem('token', data.token);
+        showSuccessToast('Login successful!');
         if (onLogin) onLogin(data.user);
       } else {
-        setError(data.error || 'Login failed');
+        const errorMessage = data.error || 'Login failed';
+        setError(errorMessage);
+        showErrorToast(errorMessage);
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      console.error('Login error:', err);
+      const errorMessage = handleApiError(err, 'Login failed. Please try again.');
+      setError(errorMessage);
+      showErrorToast(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -56,8 +91,8 @@ const AnimatedLoginForm = ({ onLogin, onForgotPassword }) => {
   return (
     <div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center p-4 font-sans">
       {/* Main Login Card */}
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-2xl p-10">
+      <div className="w-full max-w-lg sm:max-w-xl md:max-w-2xl">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10 lg:p-12">
           
           {/* Logo */}
           <div className="text-center mb-6">
@@ -69,15 +104,15 @@ const AnimatedLoginForm = ({ onLogin, onForgotPassword }) => {
           </div>
           
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-2 text-[#FCA600]">
+          <div className="text-center mb-8 lg:mb-10">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-2 text-[#FCA600]">
               Welcome Back
             </h1>
-            <p className="text-gray-500">Sign in to your account</p>
+            <p className="text-gray-500 text-sm sm:text-base lg:text-lg">Sign in to your account</p>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 lg:space-y-8 max-w-md mx-auto">
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -91,7 +126,7 @@ const AnimatedLoginForm = ({ onLogin, onForgotPassword }) => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400 transition-all duration-200"
+                  className="w-full px-4 py-3 sm:py-4 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400 transition-all duration-200 text-sm sm:text-base"
                   placeholder="Enter your email"
                 />
               </div>
@@ -110,7 +145,7 @@ const AnimatedLoginForm = ({ onLogin, onForgotPassword }) => {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400 transition-all duration-200"
+                  className="w-full px-4 py-3 sm:py-4 pr-12 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400 transition-all duration-200 text-sm sm:text-base"
                   placeholder="Enter your password"
                 />
                 <button
@@ -144,7 +179,7 @@ const AnimatedLoginForm = ({ onLogin, onForgotPassword }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full text-white py-3 px-6 rounded-lg font-semibold bg-[#FCB72D] hover:bg-yellow-500 transition-all duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full text-white py-3 sm:py-4 px-6 rounded-lg font-semibold bg-[#FCB72D] hover:bg-yellow-500 transition-all duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500/50 disabled:opacity-60 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {loading ? (
                 <div className="flex items-center justify-center">

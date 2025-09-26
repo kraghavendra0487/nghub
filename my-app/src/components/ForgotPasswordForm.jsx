@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import API_BASE_URL from '../config/api.js'
 
 const ForgotPasswordForm = ({ onBackToLogin }) => {
   const [step, setStep] = useState(1) // 1: Email, 2: OTP, 3: New Password

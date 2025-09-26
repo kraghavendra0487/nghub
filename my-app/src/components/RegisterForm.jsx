@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import API_BASE_URL from '../config/api.js'
 
 const RegisterForm = ({ onLogin }) => {
   const [formData, setFormData] = useState({

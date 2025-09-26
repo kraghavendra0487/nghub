@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import API_BASE_URL from '../../config/api.js'
 
 export default function CardForm({ customerId, customerName, onSuccess, onError }) {
   const [formData, setFormData] = useState({

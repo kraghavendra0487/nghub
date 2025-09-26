@@ -1,15 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function AdminNavbar({ user, isDarkMode, setIsDarkMode, currentPage }) {
   const navigate = useNavigate()
+  const { handleLogout } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    navigate('/')
-  }
 
   const navigationItems = [
     { name: 'Dashboard', href: '/admin', icon: '📊' },

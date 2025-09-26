@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import API_BASE_URL from '../../config/api.js'
 
 export default function ClaimsTable({ claims, cardId, onRefresh }) {
   const [editingClaim, setEditingClaim] = useState(null)
