@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 
-export default function CardForm({ customerId, customerName, onSuccess, onError }) {
+export default function CardForm({ customerId, customerName, onSuccess, onError, disableAnimations = false }) {
   const [formData, setFormData] = useState({
     card_number: '',
     register_number: '',
@@ -15,7 +15,7 @@ export default function CardForm({ customerId, customerName, onSuccess, onError 
   const [style, setStyle] = useState({})
 
   const handleMouseMove = (e) => {
-    if (!cardRef.current) return
+    if (disableAnimations || !cardRef.current) return
 
     const { clientX, clientY } = e
     const { left, top, width, height } = cardRef.current.getBoundingClientRect()
@@ -33,6 +33,8 @@ export default function CardForm({ customerId, customerName, onSuccess, onError 
   }
 
   const handleMouseLeave = () => {
+    if (disableAnimations) return
+    
     setStyle({
       transform: 'perspective(1000px) rotateY(0deg) rotateX(0deg)',
       '--opacity': '0',
@@ -75,26 +77,29 @@ export default function CardForm({ customerId, customerName, onSuccess, onError 
   }
 
   return (
-    <div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={style}
-      className="relative w-full max-w-lg rounded-2xl bg-gradient-to-tr from-green-900 to-green-700 p-6 text-white shadow-2xl transition-transform duration-100 ease-out"
-    >
+    <div className="flex justify-center">
+      <div
+        ref={cardRef}
+        onMouseMove={disableAnimations ? undefined : handleMouseMove}
+        onMouseLeave={disableAnimations ? undefined : handleMouseLeave}
+        style={disableAnimations ? {} : style}
+        className="relative w-full max-w-lg rounded-2xl bg-gradient-to-tr from-gray-900 to-gray-700 p-6 text-white shadow-2xl transition-transform duration-100 ease-out"
+      >
       {/* Shiny glare effect overlay */}
-      <div 
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-[var(--opacity)] transition-opacity duration-300"
-        style={{
-            background: `radial-gradient(400px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.2), transparent)`
-        }}
-      />
+      {!disableAnimations && (
+        <div 
+          className="pointer-events-none absolute inset-0 rounded-2xl opacity-[var(--opacity)] transition-opacity duration-300"
+          style={{
+              background: `radial-gradient(400px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.2), transparent)`
+          }}
+        />
+      )}
       
       {/* Card content */}
       <div className="relative">
         {/* Header */}
         <div className="mb-6">
-          <p className="text-xs font-light text-green-300">Add New Card</p>
+          <p className="text-xs font-light text-gray-300">Add New Card</p>
           <h2 className="text-lg font-bold">{customerName}</h2>
         </div>
 
@@ -102,63 +107,63 @@ export default function CardForm({ customerId, customerName, onSuccess, onError 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-green-300 mb-1">Card Number *</label>
+              <label className="block text-xs text-gray-300 mb-1">Card Number *</label>
               <input
                 type="text"
                 name="card_number"
                 value={formData.card_number}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-green-800 bg-opacity-50 border border-green-600 rounded-lg text-white placeholder-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-gray-800 bg-opacity-50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                 placeholder="Enter card number"
               />
             </div>
             <div>
-              <label className="block text-xs text-green-300 mb-1">Register Number</label>
+              <label className="block text-xs text-gray-300 mb-1">Register Number</label>
               <input
                 type="text"
                 name="register_number"
                 value={formData.register_number}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-green-800 bg-opacity-50 border border-green-600 rounded-lg text-white placeholder-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-gray-800 bg-opacity-50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                 placeholder="Enter register number"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-green-300 mb-1">Card Holder Name *</label>
+            <label className="block text-xs text-gray-300 mb-1">Card Holder Name *</label>
             <input
               type="text"
               name="card_holder_name"
               value={formData.card_holder_name}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 bg-green-800 bg-opacity-50 border border-green-600 rounded-lg text-white placeholder-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 py-2 bg-gray-800 bg-opacity-50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
               placeholder="Enter card holder name"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-green-300 mb-1">Agent Name</label>
+              <label className="block text-xs text-gray-300 mb-1">Agent Name</label>
               <input
                 type="text"
                 name="agent_name"
                 value={formData.agent_name}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-green-800 bg-opacity-50 border border-green-600 rounded-lg text-white placeholder-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-gray-800 bg-opacity-50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                 placeholder="Enter agent name"
               />
             </div>
             <div>
-              <label className="block text-xs text-green-300 mb-1">Agent Mobile</label>
+              <label className="block text-xs text-gray-300 mb-1">Agent Mobile</label>
               <input
                 type="tel"
                 name="agent_mobile"
                 value={formData.agent_mobile}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-green-800 bg-opacity-50 border border-green-600 rounded-lg text-white placeholder-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-gray-800 bg-opacity-50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                 placeholder="Enter agent mobile"
               />
             </div>
@@ -169,14 +174,14 @@ export default function CardForm({ customerId, customerName, onSuccess, onError 
             <button
               type="button"
               onClick={() => onSuccess()}
-              className="px-4 py-2 bg-green-800 bg-opacity-50 hover:bg-green-800 rounded-lg text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-gray-800 bg-opacity-50 hover:bg-gray-800 rounded-lg text-sm font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+              className="px-6 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
             >
               {loading && (
                 <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,6 +193,7 @@ export default function CardForm({ customerId, customerName, onSuccess, onError 
           </div>
         </form>
       </div>
+    </div>
     </div>
   )
 }

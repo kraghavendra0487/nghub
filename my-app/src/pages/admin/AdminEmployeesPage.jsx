@@ -11,6 +11,7 @@ export default function EmployeeManagement() {
   const [employees, setEmployees] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [employeeCustomers, setEmployeeCustomers] = useState([])
+  const [employeeCustomerCounts, setEmployeeCustomerCounts] = useState({})
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -58,10 +59,38 @@ export default function EmployeeManagement() {
         ? data
         : (data.users || data.employees || [])
       setEmployees(list)
+      
+      // Fetch customer counts for each employee
+      await fetchCustomerCounts(list)
     } catch (error) {
       console.error('Error fetching employees:', error)
       setError('Failed to fetch employees')
       setTimeout(() => setError(''), 3000)
+    }
+  }
+
+  const fetchCustomerCounts = async (employeeList) => {
+    try {
+      const counts = {}
+      for (const employee of employeeList) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/customers/employee/${employee.id}`, {
+            headers: getAuthHeaders()
+          })
+          if (response.ok) {
+            const data = await response.json()
+            const customers = Array.isArray(data) ? data : (data.customers || [])
+            counts[employee.id] = customers.length
+          } else {
+            counts[employee.id] = 0
+          }
+        } catch (error) {
+          counts[employee.id] = 0
+        }
+      }
+      setEmployeeCustomerCounts(counts)
+    } catch (error) {
+      console.error('Error fetching customer counts:', error)
     }
   }
 
@@ -302,7 +331,7 @@ export default function EmployeeManagement() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {employee.customer_count || 0} customers
+                            {employeeCustomerCounts[employee.id] || 0} customers
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

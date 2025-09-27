@@ -16,6 +16,13 @@ class UserController {
   static async getUserById(req, res) {
     try {
       const { id } = req.params;
+      const requestingUser = req.user;
+      
+      // Security check: employees can only view their own profile
+      if (requestingUser.role === 'employee' && requestingUser.id.toString() !== id.toString()) {
+        return res.status(403).json({ error: 'You can only view your own profile' });
+      }
+      
       const result = await UserService.getUserById(id);
       res.json(result);
     } catch (error) {

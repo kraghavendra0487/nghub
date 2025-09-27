@@ -10,9 +10,9 @@ router.get('/search', protect, authorize('admin', 'employee'), CustomerControlle
 router.get('/employee/:employeeId', protect, authorize('admin', 'employee'), CustomerController.getCustomersByEmployeeId);
 router.get('/:id', protect, authorize('admin', 'employee'), CustomerController.getCustomerById);
 
-// Write operations: employees can create/update customers, only admins can delete
+// Write operations: both admin and employee can manage customers
 router.post('/', protect, authorize('admin', 'employee'), CustomerController.createCustomer);
 router.put('/:id', protect, authorize('admin', 'employee'), CustomerController.updateCustomer);
-router.delete('/:id', protect, authorize('admin'), CustomerController.deleteCustomer);
+router.delete('/:id', protect, authorize('admin', 'employee'), CustomerController.deleteCustomer);
 
 module.exports = router;

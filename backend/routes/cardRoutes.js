@@ -10,9 +10,9 @@ router.get('/:id', protect, authorize('admin', 'employee'), CardController.getCa
 router.get('/customer/:customerId', protect, authorize('admin', 'employee'), CardController.getCardByCustomerId);
 router.get('/employee/:employeeId', protect, authorize('admin', 'employee'), CardController.getCardsByEmployeeId);
 
-// Write operations: admin only
-router.post('/', protect, authorize('admin'), CardController.createCard);
-router.put('/:id', protect, authorize('admin'), CardController.updateCard);
-router.delete('/:id', protect, authorize('admin'), CardController.deleteCard);
+// Write operations: both admin and employee can manage cards
+router.post('/', protect, authorize('admin', 'employee'), CardController.createCard);
+router.put('/:id', protect, authorize('admin', 'employee'), CardController.updateCard);
+router.delete('/:id', protect, authorize('admin', 'employee'), CardController.deleteCard);
 
 module.exports = router;

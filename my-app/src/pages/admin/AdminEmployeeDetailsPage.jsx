@@ -10,9 +10,27 @@ export default function EmployeeDetailsPage() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [employee, setEmployee] = useState(null)
   const [employeeCustomers, setEmployeeCustomers] = useState([])
+  const [employeeCamps, setEmployeeCamps] = useState([])
+  const [employeeCards, setEmployeeCards] = useState([])
+  const [employeeClaims, setEmployeeClaims] = useState([])
   const [error, setError] = useState('')
   const navigate = useNavigate()
   const { id } = useParams()
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Invalid Date'
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long', 
+        day: 'numeric'
+      })
+    } catch (error) {
+      return 'Invalid Date'
+    }
+  }
 
   useEffect(() => {
     if (!user) {
@@ -24,7 +42,7 @@ export default function EmployeeDetailsPage() {
       navigate('/employee', { replace: true })
       return
     }
-    Promise.all([fetchEmployee(), fetchEmployeeCustomers()])
+    Promise.all([fetchEmployee(), fetchEmployeeCustomers(), fetchEmployeeCamps(), fetchEmployeeCards(), fetchEmployeeClaims()])
       .finally(() => setLoading(false))
   }, [user, navigate, id])
 
@@ -35,8 +53,11 @@ export default function EmployeeDetailsPage() {
       })
 
       const data = await response.json()
+      console.log('Employee data received:', data) // Debug log
       if (data.user || data.employee) {
-        setEmployee(data.user || data.employee)
+        const employeeData = data.user || data.employee
+        console.log('Employee created_at field:', employeeData.created_at) // Debug log
+        setEmployee(employeeData)
       } else {
         setError('Employee not found')
         setTimeout(() => navigate('/admin/employees'), 2000)
@@ -58,6 +79,48 @@ export default function EmployeeDetailsPage() {
       setEmployeeCustomers(data.customers || data || [])
     } catch (error) {
       console.error('Error fetching employee customers:', error)
+    }
+  }
+
+  const fetchEmployeeCamps = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/camps/employee/${id}`, {
+        headers: getAuthHeaders()
+      })
+
+      const data = await response.json()
+      setEmployeeCamps(data.camps || data || [])
+    } catch (error) {
+      console.error('Error fetching employee camps:', error)
+      setEmployeeCamps([])
+    }
+  }
+
+  const fetchEmployeeCards = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/cards/employee/${id}`, {
+        headers: getAuthHeaders()
+      })
+
+      const data = await response.json()
+      setEmployeeCards(data.cards || data || [])
+    } catch (error) {
+      console.error('Error fetching employee cards:', error)
+      setEmployeeCards([])
+    }
+  }
+
+  const fetchEmployeeClaims = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/claims/employee/${id}`, {
+        headers: getAuthHeaders()
+      })
+
+      const data = await response.json()
+      setEmployeeClaims(data.claims || data || [])
+    } catch (error) {
+      console.error('Error fetching employee claims:', error)
+      setEmployeeClaims([])
     }
   }
 
@@ -171,19 +234,27 @@ export default function EmployeeDetailsPage() {
                         {employee.role.charAt(0).toUpperCase() + employee.role.slice(1)}
                       </span>
                     </div>
-                    <div>
-                      <span className="font-medium">Created:</span> {new Date(employee.created_at).toLocaleDateString()}
-                    </div>
+                    {employee.created_at && (
+                      <div>
+                        <span className="font-medium">Created:</span> {formatDate(employee.created_at)}
+                      </div>
+                    )}
+                    {!employee.created_at && (
+                      <div>
+                        <span className="font-medium">Status:</span> 
+                        <span className="ml-2 text-green-600">Active Employee</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Performance Stats */}
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
-                <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-4`}>
+                <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-6`}>
                   Performance Statistics
                 </h2>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-blue-50'} rounded-lg p-4 text-center`}>
                     <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-blue-600'}`}>
                       {employeeCustomers.length}
@@ -192,13 +263,122 @@ export default function EmployeeDetailsPage() {
                       Total Customers
                     </div>
                   </div>
+                  <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-purple-50'} rounded-lg p-4 text-center`}>
+                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-purple-600'}`}>
+                      {employeeCards.length}
+                    </div>
+                    <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-purple-600'}`}>
+                      Cards Issued
+                    </div>
+                  </div>
+                  <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-yellow-50'} rounded-lg p-4 text-center`}>
+                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-yellow-600'}`}>
+                      {employeeClaims.length}
+                    </div>
+                    <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-yellow-600'}`}>
+                      Claims Processed
+                    </div>
+                  </div>
                   <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-green-50'} rounded-lg p-4 text-center`}>
                     <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-green-600'}`}>
-                      ₹{employeeCustomers.reduce((sum, customer) => sum + (parseFloat(customer.discussed_amount) || 0), 0).toLocaleString()}
+                      {employeeCamps.filter(c => c.status === 'completed').length}
                     </div>
                     <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-green-600'}`}>
-                      Total Discussed Amount
+                      Camps Completed
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Overview */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-4`}>
+                  Revenue Statistics
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Discussed</span>
+                    <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      ₹{employeeCustomers.reduce((sum, c) => sum + (parseFloat(c.discussed_amount) || 0), 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Paid</span>
+                    <span className={`font-semibold text-green-600`}>
+                      ₹{employeeCustomers.reduce((sum, c) => sum + (parseFloat(c.paid_amount) || 0), 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Pending</span>
+                    <span className={`font-semibold text-red-600`}>
+                      ₹{employeeCustomers.reduce((sum, c) => sum + (parseFloat(c.pending_amount) || 0), 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-4`}>
+                  Camp Statistics
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Camps</span>
+                    <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {employeeCamps.length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Completed</span>
+                    <span className={`font-semibold text-green-600`}>
+                      {employeeCamps.filter(c => c.status === 'completed').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Upcoming</span>
+                    <span className={`font-semibold text-blue-600`}>
+                      {employeeCamps.filter(c => c.status === 'planned').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Ongoing</span>
+                    <span className={`font-semibold text-yellow-600`}>
+                      {employeeCamps.filter(c => c.status === 'ongoing').length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-4`}>
+                  Claim Statistics
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Claims</span>
+                    <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {employeeClaims.length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>ALO Stage</span>
+                    <span className={`font-semibold text-blue-600`}>
+                      {employeeClaims.filter(c => c.process_state === 'ALO').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Board Stage</span>
+                    <span className={`font-semibold text-purple-600`}>
+                      {employeeClaims.filter(c => c.process_state === 'Board').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Insurance</span>
+                    <span className={`font-semibold text-green-600`}>
+                      {employeeClaims.filter(c => c.process_state === 'Insurance').length}
+                    </span>
                   </div>
                 </div>
               </div>

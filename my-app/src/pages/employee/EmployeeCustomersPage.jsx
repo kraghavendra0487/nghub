@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import EmployeeSidebar from '../../components/EmployeeSidebar'
 import UserCard from '../../components/employee/UserCard'
 import ClaimsTable from '../../components/employee/ClaimsTable'
+import CardForm from '../../components/employee/CardForm'
 import { useAuth } from '../../context/AuthContext'
 import API_BASE_URL from '../../config/api'
 
@@ -25,6 +26,9 @@ export default function EmployeeCustomersPage() {
   const [selectedCustomerForView, setSelectedCustomerForView] = useState(null)
   const [claims, setClaims] = useState([])
   const [customerCardMap, setCustomerCardMap] = useState({})
+  const [customerHasCard, setCustomerHasCard] = useState({})
+  const [showAddCardModal, setShowAddCardModal] = useState(false)
+  const [selectedCustomerForCard, setSelectedCustomerForCard] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -75,6 +79,13 @@ export default function EmployeeCustomersPage() {
       const data = await response.json()
       const customers = Array.isArray(data) ? data : (data.customers || [])
       setCustomers(customers)
+      
+      // Check which customers have cards
+      const cardStatus = {}
+      for (const customer of customers) {
+        cardStatus[customer.id] = await checkIfCustomerHasCard(customer.id)
+      }
+      setCustomerHasCard(cardStatus)
     } catch (error) {
       console.error('Error fetching customers:', error)
       setError('Failed to fetch customers')
@@ -134,6 +145,34 @@ export default function EmployeeCustomersPage() {
       setSelectedCard(null)
       setClaims([])
       setShowClaimsModal(true)
+    }
+  }
+
+  const handleAddCard = (customer) => {
+    setSelectedCustomerForCard(customer)
+    setShowAddCardModal(true)
+  }
+
+  const handleCardCreated = () => {
+    setShowAddCardModal(false)
+    setSelectedCustomerForCard(null)
+    // Refresh customers and card status
+    fetchCustomers()
+  }
+
+  const checkIfCustomerHasCard = async (customerId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/cards/customer/${customerId}`, {
+        headers: getAuthHeaders()
+      })
+      
+      if (response.ok) {
+        const cardData = await response.json()
+        return !!(cardData && (cardData.card || cardData.id || (cardData.cards && cardData.cards.length > 0)))
+      }
+      return false
+    } catch (error) {
+      return false
     }
   }
 
@@ -495,20 +534,23 @@ export default function EmployeeCustomersPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleViewClaims(customer)}
-                            className="text-indigo-600 hover:text-indigo-900 mr-2 px-3 py-1 border border-indigo-200 rounded-full hover:bg-indigo-50"
-                          >
-                            View
-                          </button>
+                          {customerHasCard[customer.id] ? (
+                            <button
+                              onClick={() => handleViewClaims(customer)}
+                              className="text-indigo-600 hover:text-indigo-900 mr-2 px-3 py-1 border border-indigo-200 rounded-full hover:bg-indigo-50"
+                            >
+                              View
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleAddCard(customer)}
+                              className="text-green-600 hover:text-green-900 mr-2 px-3 py-1 border border-green-200 rounded-full hover:bg-green-50"
+                            >
+                              Add Card
+                            </button>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button
-                            onClick={() => handleViewCustomer(customer)}
-                            className="text-blue-600 hover:text-blue-900 px-3 py-1 border border-blue-200 rounded-full hover:bg-blue-50"
-                          >
-                            View
-                          </button>
                           <button
                             onClick={() => handleEditCustomer(customer)}
                             className="text-yellow-600 hover:text-yellow-900 px-3 py-1 border border-yellow-200 rounded-full hover:bg-yellow-50"
@@ -851,13 +893,47 @@ export default function EmployeeCustomersPage() {
                             createdDate={selectedCard.created_at ? new Date(selectedCard.created_at).toLocaleDateString() : 'N/A'}
                           />
                         </div>
-                        <ClaimsTable card={selectedCard} claims={claims} />
+                        <ClaimsTable 
+                          card={selectedCard} 
+                          claims={claims} 
+                          cardId={selectedCard.id}
+                          onRefresh={() => fetchClaims(selectedCard.id)}
+                        />
                       </div>
                     ) : (
                       <div className="text-center py-8">
                         <p className="text-gray-500">No card found for this customer.</p>
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Add Card Modal */}
+            {showAddCardModal && selectedCustomerForCard && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-10 mx-auto p-5 border shadow-lg rounded-md bg-white" style={{ width: '90%', maxWidth: '800px' }}>
+                  <div className="mt-3">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Add Card for {selectedCustomerForCard.customer_name}
+                      </h3>
+                      <button
+                        onClick={() => setShowAddCardModal(false)}
+                        className="text-gray-400 hover:text-gray-600 text-2xl"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <CardForm
+                      customerId={selectedCustomerForCard.id}
+                      customerName={selectedCustomerForCard.customer_name}
+                      onSuccess={handleCardCreated}
+                      onCancel={() => setShowAddCardModal(false)}
+                      disableAnimations={true}
+                    />
                   </div>
                 </div>
               </div>

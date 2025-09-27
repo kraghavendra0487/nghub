@@ -63,7 +63,7 @@ export default function EmployeeDashboard() {
         }
       })
       if (response.ok) {
-        const data = await response.json()
+      const data = await response.json()
         const customersData = data.customers || data || []
         setCustomers(customersData)
       }
@@ -121,8 +121,8 @@ export default function EmployeeDashboard() {
 
   useEffect(() => {
     if (user?.id) {
-      fetchCustomers()
-      fetchCamps()
+          fetchCustomers()
+          fetchCamps()
       fetchCards()
       fetchEmployeeClaims()
     }
@@ -162,7 +162,7 @@ export default function EmployeeDashboard() {
                   <div>
                     <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Welcome back, {user?.name}!</h1>
                     <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>Here's what's happening with your customers today.</p>
-                  </div>
+                    </div>
                   <div className="flex items-center space-x-12">
                     {/* Header stats - icon + count in a row, label below */}
                     <div className="flex flex-col items-center">
@@ -173,7 +173,7 @@ export default function EmployeeDashboard() {
                         <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{completedCamps.length}</div>
                       </div>
                       <div className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Completed Camps</div>
-                    </div>
+                  </div>
                     <div className="flex flex-col items-center">
                       <div className="flex items-center space-x-2">
                         <svg className={`w-6 h-6 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
@@ -181,23 +181,23 @@ export default function EmployeeDashboard() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 20a8 8 0 0116 0" />
                         </svg>
                         <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{customers.length}</div>
-                      </div>
+                </div>
                       <div className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Customers</div>
-                    </div>
+              </div>
                     <div className="flex flex-col items-center">
                       <div className="flex items-center space-x-2">
                         <svg className={`w-6 h-6 ${isDarkMode ? 'text-violet-300' : 'text-violet-600'}`} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
                           <rect x="3" y="6" width="18" height="12" rx="2" ry="2" />
                           <path d="M3 10h18" />
-                        </svg>
+                      </svg>
                         <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{cards.length}</div>
                       </div>
                       <div className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Cards</div>
                     </div>
                   </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
             {/* Claim Type Visualization */}
             <ClaimTypeStatsVisualization claims={claims} isDarkMode={isDarkMode} title="Claim Type Analysis" />
@@ -219,11 +219,56 @@ export default function EmployeeDashboard() {
               <RecentCampsMaps camps={camps} title="Recent Camps" onViewMore={() => navigate('/employee/camps')} />
             </div>
 
-            {/* Recent Activity */}
+            {/* Quick Actions */}
             <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
-              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-4`}>Recent Activity</h2>
-              <div className="text-center py-8">
-                <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No recent activity to display</p>
+              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-6`}>Quick Actions</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <button
+                  onClick={() => navigate('/employee/customers')}
+                  className="p-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+                >
+                  <div className="flex items-center">
+                    <svg className="w-8 h-8 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <div>
+                      <h3 className="font-medium text-gray-900">Add Customer</h3>
+                      <p className="text-sm text-gray-500">Create new customer</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => navigate('/employee/camps')}
+                  className="p-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50 transition-colors text-left"
+                >
+                  <div className="flex items-center">
+                    <svg className="w-8 h-8 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <h3 className="font-medium text-gray-900">Upcoming Camps</h3>
+                      <p className="text-sm text-gray-500">View my camps</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => navigate('/employee/customers')}
+                  className="p-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-purple-500 hover:bg-purple-50 transition-colors text-left"
+                >
+                  <div className="flex items-center">
+                    <svg className="w-8 h-8 text-purple-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <div>
+                      <h3 className="font-medium text-gray-900">My Customers</h3>
+                      <p className="text-sm text-gray-500">Manage customers</p>
+                    </div>
+                  </div>
+                </button>
+
+
               </div>
             </div>
           </div>

@@ -12,9 +12,9 @@ router.get('/card/:cardId', protect, authorize('admin', 'employee'), ClaimContro
 router.get('/customer/:customerId', protect, authorize('admin', 'employee'), ClaimController.getClaimsByCustomerId);
 router.get('/employee/:employeeId', protect, authorize('admin', 'employee'), ClaimController.getClaimsByEmployeeId);
 
-// Write operations restricted to admin
-router.post('/', protect, authorize('admin'), ClaimController.createClaim);
-router.put('/:id', protect, authorize('admin'), ClaimController.updateClaim);
-router.delete('/:id', protect, authorize('admin'), ClaimController.deleteClaim);
+// Write operations: both admin and employee can manage claims
+router.post('/', protect, authorize('admin', 'employee'), ClaimController.createClaim);
+router.put('/:id', protect, authorize('admin', 'employee'), ClaimController.updateClaim);
+router.delete('/:id', protect, authorize('admin', 'employee'), ClaimController.deleteClaim);
 
 module.exports = router;
