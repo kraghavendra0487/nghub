@@ -625,9 +625,7 @@ export default function EmployeeCustomersPage() {
                         >
                           <option value="">Select payment mode</option>
                           <option value="cash">Cash</option>
-                          <option value="bank_transfer">Bank Transfer</option>
-                          <option value="cheque">Cheque</option>
-                          <option value="card">Card</option>
+                          <option value="online">Online</option>
                         </select>
                       </div>
                       <div className="flex justify-end space-x-3 pt-4">
@@ -747,9 +745,7 @@ export default function EmployeeCustomersPage() {
                         >
                           <option value="">Select payment mode</option>
                           <option value="cash">Cash</option>
-                          <option value="bank_transfer">Bank Transfer</option>
-                          <option value="cheque">Cheque</option>
-                          <option value="card">Card</option>
+                          <option value="online">Online</option>
                         </select>
                       </div>
                       <div className="flex justify-end space-x-3 pt-4">

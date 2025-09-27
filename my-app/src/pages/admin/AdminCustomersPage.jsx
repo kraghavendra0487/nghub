@@ -676,14 +676,17 @@ export default function CustomerManagement() {
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                         Mode of Payment
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={newCustomer.mode_of_payment}
                         onChange={(e) => setNewCustomer({...newCustomer, mode_of_payment: e.target.value})}
                         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
                         }`}
-                      />
+                      >
+                        <option value="">Select payment mode</option>
+                        <option value="cash">Cash</option>
+                        <option value="online">Online</option>
+                      </select>
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
@@ -824,14 +827,17 @@ export default function CustomerManagement() {
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                         Mode of Payment
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={editCustomer.mode_of_payment}
                         onChange={(e) => setEditCustomer({...editCustomer, mode_of_payment: e.target.value})}
                         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
                         }`}
-                      />
+                      >
+                        <option value="">Select payment mode</option>
+                        <option value="cash">Cash</option>
+                        <option value="online">Online</option>
+                      </select>
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
