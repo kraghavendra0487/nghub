@@ -502,7 +502,7 @@ const AnimatedLoginForm = ({ onLogin, onForgotPassword, error: externalError }) 
   return (
     <div className="w-full max-w-md p-8 bg-white/95 rounded-3xl shadow-xl border border-gray-100">
       <div className="text-center mb-6">
-        <img src="/logo.png" alt="Logo" className="mx-auto h-14 w-auto object-contain" />
+        <img src="https://pub-8f7d5f81a3294be18dbe97ddb794a4ae.r2.dev/logo.png" alt="Logo" className="mx-auto h-14 w-auto object-contain" />
       </div>
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold">Welcome back</h2>
