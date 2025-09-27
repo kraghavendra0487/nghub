@@ -5,6 +5,9 @@ import EmployeeSidebar from '../../components/EmployeeSidebar'
 import EditCustomerForm from '../../components/employee/EditCustomerForm'
 import CardForm from '../../components/employee/CardForm'
 import ClaimsTable from '../../components/employee/ClaimsTable'
+import ClaimTypeStatsVisualization from '../../components/ClaimTypeStatsVisualization'
+import FinancialMetrics from '../../components/FinancialMetrics'
+import RecentCampsMaps from '../../components/RecentCampsMaps'
 import PendingPaymentsTable from '../../components/employee/PendingPaymentsTable'
 import PendingClaimsTable from '../../components/employee/PendingClaimsTable'
 import UserCard from '../../components/employee/UserCard'
@@ -49,6 +52,35 @@ export default function EmployeeDashboard() {
   const [claimTypeStats, setClaimTypeStats] = useState({})
   const [isDarkMode, setIsDarkMode] = useState(false)
   const navigate = useNavigate()
+  const toNumber = (v) => {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const totalRevenue = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
+  const totalDiscussed = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
+  const pendingCustomerPayments = customers.reduce((sum, c) => sum + toNumber(c.pending_amount), 0)
+  const pendingClaimsAmount = claims.reduce((sum, cl) => sum + toNumber(cl.pending_amount || 0), 0)
+
+  const getState = (cl) => (cl?.process_state || cl?.status || '').toLowerCase()
+
+  const fetchEmployeeClaims = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!user?.id) return
+      const response = await fetch(`/api/claims/employee/${user.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setClaims(Array.isArray(data) ? data : (data.claims || []))
+      } else {
+        setClaims([])
+      }
+    } catch (e) {
+      setClaims([])
+    }
+  }
 
   const fetchCustomers = async () => {
     try {
@@ -71,6 +103,7 @@ export default function EmployeeDashboard() {
       setCustomerCount(0)
     }
   }
+
 
   const fetchCamps = async () => {
     try {
@@ -109,6 +142,7 @@ export default function EmployeeDashboard() {
     setLoading(false)
           fetchCustomers()
           fetchCamps()
+          fetchEmployeeClaims()
   }, [])
 
 
@@ -216,13 +250,33 @@ export default function EmployeeDashboard() {
               </div>
             </div>
 
+            {/* Claim Type Visualization */}
+            <ClaimTypeStatsVisualization claims={claims} isDarkMode={isDarkMode} title="Claim Type Analysis" />
+
+            {/* Financial Metrics */}
+            <div className="mt-8 mb-8">
+              <FinancialMetrics
+                items={[
+                  { id: 1, name: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, color: 'text-emerald-500', bgColor: 'bg-emerald-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" />) },
+                  { id: 2, name: 'Pending Cust. Payments', value: `₹${pendingCustomerPayments.toLocaleString()}`, color: 'text-amber-500', bgColor: 'bg-amber-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />) },
+                  { id: 3, name: 'Pending Claims Amount', value: `₹${pendingClaimsAmount.toLocaleString()}`, color: 'text-red-500', bgColor: 'bg-red-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />) },
+                  { id: 4, name: 'Discussed Amount', value: `₹${totalDiscussed.toLocaleString()}`, color: 'text-indigo-500', bgColor: 'bg-indigo-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />) }
+                ]}
+              />
+            </div>
+
+            {/* Recent Camps with Maps */}
+            <div className="mb-8">
+              <RecentCampsMaps camps={camps} title="Recent Camps" onViewMore={() => navigate('/employee/camps')} />
+            </div>
+
             {/* Recent Activity */}
             <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
               <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-4`}>Recent Activity</h2>
               <div className="text-center py-8">
                 <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No recent activity to display</p>
+              </div>
             </div>
-          </div>
           </div>
         </main>
       </div>

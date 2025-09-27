@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
 import { useAuth } from '../../context/AuthContext'
+  import ClaimTypeStatsVisualization from '../../components/ClaimTypeStatsVisualization'
 import API_BASE_URL from '../../config/api'
+import FinancialMetrics from '../../components/FinancialMetrics'
+  import RecentCampsMaps from '../../components/RecentCampsMaps'
 
 export default function AdminDashboard() {
   const { user, getAuthHeaders, logout } = useAuth()
@@ -104,7 +107,8 @@ export default function AdminDashboard() {
   const totalRevenue = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
   const totalDiscussed = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
   const pendingCustomerPayments = customers.reduce((sum, c) => sum + toNumber(c.pending_amount), 0)
-  const pendingClaimsAmount = claims.filter(cl => (cl.status || '').toLowerCase() === 'pending').reduce((s, cl) => s + toNumber(cl.amount), 0)
+  const getState = (cl) => (cl.process_state || cl.status || '').toLowerCase()
+  const pendingClaimsAmount = claims.filter(cl => ['pending','initiated'].includes(getState(cl))).reduce((s, cl) => s + toNumber(cl.pending_amount || cl.discussed_amount || 0), 0)
   const completedCamps = camps.filter(c => (c.status || '').toLowerCase() === 'completed')
   const plannedCamps = camps.filter(c => (c.status || '').toLowerCase() === 'planned')
   const ongoingCamps = camps.filter(c => (c.status || '').toLowerCase() === 'ongoing')
@@ -146,8 +150,38 @@ export default function AdminDashboard() {
                     <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Admin Dashboard</h1>
                     <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>Welcome back, {user?.name}</p>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    {/* Mobile menu button is now handled by AdminSidebar */}
+                  <div className="flex items-center space-x-12">
+                    {/* Header stats - icon + count in a row, label below */}
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center space-x-2">
+                        <svg className={`w-6 h-6 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a2 2 0 00-2 2v7a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+                        </svg>
+                        <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{employeesCount.toLocaleString()}</div>
+                      </div>
+                      <div className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Employees</div>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center space-x-2">
+                        <svg className={`w-6 h-6 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 12a4 4 0 100-8 4 4 0 000 8z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 20a8 8 0 0116 0" />
+                        </svg>
+                        <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{totalCustomers.toLocaleString()}</div>
+                      </div>
+                      <div className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Customers</div>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center space-x-2">
+                        <svg className={`w-6 h-6 ${isDarkMode ? 'text-violet-300' : 'text-violet-600'}`} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                          <rect x="3" y="6" width="18" height="12" rx="2" ry="2" />
+                          <path d="M3 10h18" />
+                        </svg>
+                        <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{totalCards.toLocaleString()}</div>
+                      </div>
+                      <div className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Cards</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -161,87 +195,27 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* KPI Tiles */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-              {[
-                { label: 'Employees', value: `${employeesActive} / ${employeesCount}`, border: 'border-blue-500', iconBg: 'bg-blue-100', iconText: 'text-blue-600' },
-                { label: 'Customers', value: totalCustomers.toLocaleString(), border: 'border-emerald-500', iconBg: 'bg-emerald-100', iconText: 'text-emerald-600' },
-                { label: 'Cards', value: totalCards.toLocaleString(), border: 'border-violet-500', iconBg: 'bg-violet-100', iconText: 'text-violet-600' },
-                { label: 'Claims', value: totalClaims.toLocaleString(), border: 'border-pink-500', iconBg: 'bg-pink-100', iconText: 'text-pink-600' },
-                { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, border: 'border-yellow-500', iconBg: 'bg-yellow-100', iconText: 'text-yellow-600' },
-                { label: 'Pending Cust. Payments', value: `₹${pendingCustomerPayments.toLocaleString()}`, border: 'border-orange-500', iconBg: 'bg-orange-100', iconText: 'text-orange-600' },
-                { label: 'Pending Claims Amount', value: `₹${pendingClaimsAmount.toLocaleString()}`, border: 'border-red-500', iconBg: 'bg-red-100', iconText: 'text-red-600' },
-                { label: 'Discussed Amount', value: `₹${totalDiscussed.toLocaleString()}`, border: 'border-amber-500', iconBg: 'bg-amber-100', iconText: 'text-amber-600' },
-                { label: 'Pending Camps', value: pendingCampsCount.toLocaleString(), border: 'border-cyan-500', iconBg: 'bg-cyan-100', iconText: 'text-cyan-600' },
-                { label: 'Completed Camps', value: completedCamps.length.toLocaleString(), border: 'border-slate-500', iconBg: 'bg-slate-100', iconText: 'text-slate-600' }
-              ].map((kpi, idx) => (
-                <div key={idx} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 border-l-4 ${kpi.border}`}>
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-lg ${kpi.iconBg}`}>
-                      <svg className={`w-6 h-6 ${kpi.iconText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    </div>
-                    <div className="ml-4">
-                      <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{kpi.label}</p>
-                      <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{kpi.value}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            {/* Row 1 removed to avoid duplicates with header */}
+
+            {/* Row 2: Claim Type Visualization */}
+            <ClaimTypeStatsVisualization claims={claims} isDarkMode={isDarkMode} title="Claim Type Analysis" />
+
+            {/* Row 3: Financial Metrics */}
+            <div className="mb-8">
+              <FinancialMetrics
+                items={[
+                  { id: 1, name: 'Total Revenue', subtitle: 'Discussed amount collected', value: `₹${totalRevenue.toLocaleString()}`, color: 'text-emerald-500', bgColor: 'bg-emerald-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" />) },
+                  { id: 2, name: 'Pending Customer Payments', subtitle: 'Outstanding from customers', value: `₹${pendingCustomerPayments.toLocaleString()}`, color: 'text-amber-500', bgColor: 'bg-amber-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />) },
+                  { id: 3, name: 'Pending Claims Amount', subtitle: 'Claims yet to be settled', value: `₹${pendingClaimsAmount.toLocaleString()}`, color: 'text-red-500', bgColor: 'bg-red-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />) },
+                  { id: 4, name: 'Discussed Amount', subtitle: 'Total negotiated amount', value: `₹${totalDiscussed.toLocaleString()}`, color: 'text-indigo-500', bgColor: 'bg-indigo-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />) }
+                ]}
+              />
             </div>
 
-            {/* Camps Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Recent Camps</h2>
-                </div>
-                <div className="space-y-3">
-                  {recentCamps.map((camp) => (
-                    <div key={camp.id} className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 flex items-center justify-between`}>
-                      <div>
-                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{camp.location}</p>
-                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{new Date(camp.camp_date).toLocaleDateString()}</p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        (camp.status || '').toLowerCase() === 'completed' ? 'bg-gray-100 text-gray-800' :
-                        (camp.status || '').toLowerCase() === 'ongoing' ? 'bg-green-100 text-green-800' :
-                        'bg-blue-100 text-blue-800'
-                      }`}>
-                        {(camp.status || '').charAt(0).toUpperCase() + (camp.status || '').slice(1)}
-                      </span>
-                    </div>
-                  ))}
-                  {recentCamps.length === 0 && (
-                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>No recent camps.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Upcoming Camps</h2>
-                  <div className="space-x-2">
-                    <button onClick={() => setUpcomingPage(p => Math.max(1, p - 1))} className={`${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'} px-3 py-1 rounded disabled:opacity-50`} disabled={currentUpcomingPage === 1}>Prev</button>
-                    <button onClick={() => setUpcomingPage(p => Math.min(totalUpcomingPages, p + 1))} className={`${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'} px-3 py-1 rounded disabled:opacity-50`} disabled={currentUpcomingPage === totalUpcomingPages}>Next</button>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {upcomingSlice.map((camp) => (
-                    <div key={camp.id} className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 flex items-center justify-between`}>
-                      <div>
-                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{camp.location}</p>
-                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{new Date(camp.camp_date).toLocaleDateString()}</p>
-                      </div>
-                      <a href={`https://maps.google.com/?q=${encodeURIComponent(camp.location)}`} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">Map</a>
-                    </div>
-                  ))}
-                  {upcomingSlice.length === 0 && (
-                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>No upcoming camps.</p>
-                  )}
-                </div>
-                <div className={`mt-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Page {currentUpcomingPage} of {totalUpcomingPages}</div>
+            {/* Recent Camps - Full Row */}
+            <div className="mb-8">
+              <div className={`bg-white rounded-lg shadow-sm p-6`}>
+                <RecentCampsMaps camps={camps} title="Recent Camps" onViewMore={() => navigate('/admin/camps')} />
               </div>
             </div>
 
@@ -253,11 +227,16 @@ export default function AdminDashboard() {
                   <button onClick={() => navigate('/admin/employees')} className="text-sm text-blue-600 hover:underline">View more</button>
                 </div>
                 <div className="space-y-3">
-                  {recentEmployees.map(emp => (
+                  {recentEmployees.slice(0, 5).map(emp => (
                     <div key={emp.id} className="flex items-center justify-between">
-                      <div>
-                        <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium`}>{emp.name}</p>
-                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{emp.email}</p>
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${emp.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {(emp.name || emp.email || '??').trim().charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium`}>{emp.name}</p>
+                          <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{emp.email}</p>
+                        </div>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${emp.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>{emp.role}</span>
                     </div>
@@ -274,11 +253,16 @@ export default function AdminDashboard() {
                   <button onClick={() => navigate('/admin/customers')} className="text-sm text-blue-600 hover:underline">View more</button>
                 </div>
                 <div className="space-y-3">
-                  {recentCustomers.map(cust => (
+                  {recentCustomers.slice(0, 5).map(cust => (
                     <div key={cust.id} className="flex items-center justify-between">
-                      <div>
-                        <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium`}>{cust.customer_name}</p>
-                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{cust.email || cust.phone_number}</p>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center text-sm font-semibold">
+                          {(cust.customer_name || cust.email || '??').trim().charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium`}>{cust.customer_name}</p>
+                          <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{cust.email || cust.phone_number}</p>
+                        </div>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>ID {cust.id}</span>
                     </div>
@@ -291,9 +275,9 @@ export default function AdminDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 mt-8`}>
               <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-4`}>Quick Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <button
                   onClick={() => navigate('/admin/add-employee')}
                   className="p-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
 import UserCard from '../../components/employee/UserCard'
-import ClaimsTable from '../../components/employee/ClaimsTable'
+import AdminClaimsTable from '../../components/admin/AdminClaimsTable'
+import EditCardModal from '../../components/admin/EditCardModal'
 import WhiteCardPopup from '../../components/WhiteCardPopup'
 import { useAuth } from '../../context/AuthContext'
 import API_BASE_URL from '../../config/api'
@@ -25,8 +26,11 @@ export default function CustomerManagement() {
   const [filterWorkType, setFilterWorkType] = useState('all')
   const [showClaimsModal, setShowClaimsModal] = useState(false)
   const [selectedCard, setSelectedCard] = useState(null)
+  const [selectedCustomerForView, setSelectedCustomerForView] = useState(null)
+  const [showCardEditModal, setShowCardEditModal] = useState(false)
+  const [cardBeingEdited, setCardBeingEdited] = useState(null)
   const [claims, setClaims] = useState([])
-  const [customerCards, setCustomerCards] = useState([])
+  const [customerCardMap, setCustomerCardMap] = useState({})
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -34,36 +38,36 @@ export default function CustomerManagement() {
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     phone_number: '',
-    email: '',
     type_of_work: '',
     discussed_amount: '',
-    pending_amount: '',
     paid_amount: '',
-    credit_amount: '',
-    assigned_to: ''
+    pending_amount: '',
+    mode_of_payment: '',
+    created_by: user?.id ? String(user.id) : ''
   })
 
   // Edit Customer Form State
   const [editCustomer, setEditCustomer] = useState({
     customer_name: '',
     phone_number: '',
-    email: '',
     type_of_work: '',
     discussed_amount: '',
-    pending_amount: '',
     paid_amount: '',
-    credit_amount: '',
-    assigned_to: ''
+    pending_amount: '',
+    mode_of_payment: '',
+    created_by: user?.id ? String(user.id) : ''
   })
 
   useEffect(() => {
     if (!user) {
-      return
-    }
+        return
+      }
     if (user.role !== 'admin') {
       navigate('/employee', { replace: true })
       return
     }
+    setNewCustomer((prev) => ({ ...prev, created_by: String(user.id) }))
+    setEditCustomer((prev) => ({ ...prev, created_by: String(user.id) }))
     Promise.all([fetchCustomers(), fetchEmployees()]).finally(() => setLoading(false))
   }, [user, navigate])
 
@@ -106,13 +110,12 @@ export default function CustomerManagement() {
     setEditCustomer({
       customer_name: customer.customer_name || '',
       phone_number: customer.phone_number || '',
-      email: customer.email || '',
       type_of_work: customer.type_of_work || '',
       discussed_amount: customer.discussed_amount || '',
-      pending_amount: customer.pending_amount || '',
       paid_amount: customer.paid_amount || '',
-      credit_amount: customer.credit_amount || '',
-      assigned_to: customer.assigned_to || ''
+      pending_amount: customer.pending_amount || '',
+      mode_of_payment: customer.mode_of_payment || '',
+      created_by: customer.created_by || ''
     })
     setShowEditModal(true)
   }
@@ -147,7 +150,11 @@ export default function CustomerManagement() {
       const response = await fetch(`${API_BASE_URL}/api/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(newCustomer)
+        body: JSON.stringify({
+          ...newCustomer,
+          mode_of_payment: newCustomer.mode_of_payment || null,
+          created_by: user?.id ?? (newCustomer.created_by ? parseInt(newCustomer.created_by, 10) : null)
+        })
       })
 
       if (response.ok) {
@@ -156,13 +163,12 @@ export default function CustomerManagement() {
         setNewCustomer({
           customer_name: '',
           phone_number: '',
-          email: '',
           type_of_work: '',
           discussed_amount: '',
-          pending_amount: '',
           paid_amount: '',
-          credit_amount: '',
-          assigned_to: ''
+          pending_amount: '',
+          mode_of_payment: '',
+          created_by: user?.id || ''
         })
         fetchCustomers()
         setTimeout(() => setSuccess(''), 3000)
@@ -184,7 +190,11 @@ export default function CustomerManagement() {
       const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(editCustomer)
+        body: JSON.stringify({
+          ...editCustomer,
+          mode_of_payment: editCustomer.mode_of_payment || null,
+          created_by: user?.id ?? (editCustomer.created_by ? parseInt(editCustomer.created_by, 10) : null)
+        })
       })
 
       if (response.ok) {
@@ -209,10 +219,12 @@ export default function CustomerManagement() {
 
     // Search filter
     if (searchTerm) {
+      const term = searchTerm.toLowerCase()
       filtered = filtered.filter(customer =>
-        customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.customer_name?.toLowerCase().includes(term) ||
         customer.phone_number?.includes(searchTerm) ||
-        customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        customer.type_of_work?.toLowerCase().includes(term) ||
+        employees.find(emp => emp.id === parseInt(customer.created_by))?.name?.toLowerCase().includes(term)
       )
     }
 
@@ -237,13 +249,14 @@ export default function CustomerManagement() {
       })
       const data = await response.json()
       if (response.ok) {
-        const cards = Array.isArray(data) ? data : (data.cards || [])
-        setCustomerCards(cards)
+        const cards = Array.isArray(data) ? data : (data.cards || (data.card ? [data.card] : []))
+        setCustomerCardMap((prev) => ({ ...prev, [customerId]: cards }))
         return cards
       }
       return []
     } catch (error) {
       console.error('Error fetching customer cards:', error)
+      setCustomerCardMap((prev) => ({ ...prev, [customerId]: [] }))
       return []
     }
   }
@@ -255,7 +268,7 @@ export default function CustomerManagement() {
       })
       const data = await response.json()
       if (response.ok) {
-        const claims = Array.isArray(data) ? data : (data.claims || [])
+        const claims = Array.isArray(data) ? data : (data.claims || (data.claim ? [data.claim] : []))
         setClaims(claims)
         return claims
       }
@@ -266,21 +279,44 @@ export default function CustomerManagement() {
     }
   }
 
-  const handleViewClaims = async (customer) => {
-    const cards = await fetchCustomerCards(customer.id)
+  const loadClaimsForCustomer = async (customer) => {
+    if (!customer) return
+    const existing = customerCardMap[customer.id]
+    const cards = existing ? existing : await fetchCustomerCards(customer.id)
     if (cards.length > 0) {
-      await fetchClaims(cards[0].id)
-      setSelectedCard(cards[0])
-      setShowClaimsModal(true)
+      const cardToUse = cards[0]
+      await fetchClaims(cardToUse.id)
+      setSelectedCard(cardToUse)
     } else {
-      setError('No card found for this customer')
-      setTimeout(() => setError(''), 3000)
+      setSelectedCard(null)
+      setClaims([])
+    }
+  }
+
+  const handleViewClaims = async (customer) => {
+    setSelectedCustomerForView(customer)
+    await loadClaimsForCustomer(customer)
+    setShowClaimsModal(true)
+  }
+
+  const handleEditCardFromModal = (card) => {
+    setCardBeingEdited(card)
+    setShowCardEditModal(true)
+  }
+
+  const handleCardUpdate = async (updatedCard) => {
+    if (!updatedCard) return
+    setCustomerCardMap((prev) => ({ ...prev, [updatedCard.customer_id]: [updatedCard] }))
+    setSelectedCard(updatedCard)
+    if (selectedCustomerForView) {
+      await loadClaimsForCustomer(selectedCustomerForView)
     }
   }
 
   const closeClaimsModal = () => {
     setShowClaimsModal(false)
     setSelectedCard(null)
+    setSelectedCustomerForView(null)
     setClaims([])
   }
 
@@ -440,19 +476,28 @@ export default function CustomerManagement() {
                         Customer
                       </th>
                       <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        ID
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                         Contact
                       </th>
                       <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                         Work Type
                       </th>
                       <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Mode of Payment
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                         Amounts
                       </th>
                       <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Assigned To
+                        Created By
                       </th>
                       <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Actions
+                        Cards & Claims
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Manage
                       </th>
                     </tr>
                   </thead>
@@ -470,55 +515,73 @@ export default function CustomerManagement() {
                               <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                 {customer.customer_name || 'N/A'}
                               </div>
-                              <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                ID: {customer.id}
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Added on {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : 'N/A'}
                               </div>
+                      {customerCardMap[customer.id]?.[0]?.card_holder_name && (
+                        <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                          Card Holder: {customerCardMap[customer.id][0].card_holder_name}
                             </div>
+                      )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {customer.id}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                             {customer.phone_number || 'N/A'}
                           </div>
-                          <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {customer.email || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`} style={{ whiteSpace: 'normal', lineHeight: '1.2' }}>
+                            {customer.type_of_work || 'N/A'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            customer.type_of_work === 'Interior' 
-                              ? 'bg-purple-100 text-purple-800' 
-                              : customer.type_of_work === 'Exterior'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {customer.type_of_work || 'N/A'}
-                          </span>
+                          <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {customer.mode_of_payment || 'N/A'}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm space-y-1">
                             <div className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                               <span className="font-medium">Discussed:</span> ₹{customer.discussed_amount || 0}
                             </div>
-                            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              <span className="font-medium">Paid:</span> ₹{customer.paid_amount || 0}
+                            </div>
+                            <div className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                               <span className="font-medium">Pending:</span> ₹{customer.pending_amount || 0}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {employees.find(emp => emp.id === parseInt(customer.assigned_to))?.name || 'Unassigned'}
+                          <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`} style={{ whiteSpace: 'normal', lineHeight: '1.2' }}>
+                            {customer.employee_name || 'Unassigned'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex flex-col space-y-1">
-                            <div className="flex space-x-2">
+                          {(() => {
+                            const cards = customerCardMap[customer.id]
+                            if (cards && cards.length === 0) {
+                              return <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs`}>No cards</span>
+                            }
+                            return (
                               <button
-                                onClick={() => handleViewCustomer(customer)}
-                                className="text-blue-600 hover:text-blue-900 text-xs"
+                                onClick={() => handleViewClaims(customer)}
+                                className="text-orange-600 hover:text-orange-900 text-xs"
                               >
                                 View
                               </button>
+                            )
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
                               <button
                                 onClick={() => handleEditCustomer(customer)}
                                 className="text-green-600 hover:text-green-900 text-xs"
@@ -531,15 +594,6 @@ export default function CustomerManagement() {
                               >
                                 Delete
                               </button>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleViewClaims(customer)}
-                                className="text-orange-600 hover:text-orange-900 text-xs"
-                              >
-                                View Claims
-                              </button>
-                            </div>
                           </div>
                         </td>
                       </tr>
@@ -602,19 +656,6 @@ export default function CustomerManagement() {
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={newCustomer.email}
-                        onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                         Type of Work
                       </label>
                       <select
@@ -630,6 +671,19 @@ export default function CustomerManagement() {
                         <option value="Exterior">Exterior</option>
                         <option value="Both">Both</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                        Mode of Payment
+                      </label>
+                      <input
+                        type="text"
+                        value={newCustomer.mode_of_payment}
+                        onChange={(e) => setNewCustomer({...newCustomer, mode_of_payment: e.target.value})}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+                        }`}
+                      />
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
@@ -675,25 +729,11 @@ export default function CustomerManagement() {
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                        Credit Amount
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={newCustomer.credit_amount}
-                        onChange={(e) => setNewCustomer({...newCustomer, credit_amount: e.target.value})}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                         Assign to Employee
                       </label>
                       <select
-                        value={newCustomer.assigned_to}
-                        onChange={(e) => setNewCustomer({...newCustomer, assigned_to: e.target.value})}
+                        value={newCustomer.created_by}
+                        onChange={(e) => setNewCustomer({...newCustomer, created_by: e.target.value})}
                         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
                         }`}
@@ -764,19 +804,6 @@ export default function CustomerManagement() {
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={editCustomer.email}
-                        onChange={(e) => setEditCustomer({...editCustomer, email: e.target.value})}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                         Type of Work
                       </label>
                       <select
@@ -792,6 +819,19 @@ export default function CustomerManagement() {
                         <option value="Exterior">Exterior</option>
                         <option value="Both">Both</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                        Mode of Payment
+                      </label>
+                      <input
+                        type="text"
+                        value={editCustomer.mode_of_payment}
+                        onChange={(e) => setEditCustomer({...editCustomer, mode_of_payment: e.target.value})}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+                        }`}
+                      />
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
@@ -837,25 +877,11 @@ export default function CustomerManagement() {
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                        Credit Amount
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editCustomer.credit_amount}
-                        onChange={(e) => setEditCustomer({...editCustomer, credit_amount: e.target.value})}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                         Assign to Employee
                       </label>
                       <select
-                        value={editCustomer.assigned_to}
-                        onChange={(e) => setEditCustomer({...editCustomer, assigned_to: e.target.value})}
+                        value={editCustomer.created_by}
+                        onChange={(e) => setEditCustomer({...editCustomer, created_by: e.target.value})}
                         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
                         }`}
@@ -917,13 +943,13 @@ export default function CustomerManagement() {
                           <span className="font-medium">Phone:</span> {selectedCustomer.phone_number || 'N/A'}
                         </div>
                         <div>
-                          <span className="font-medium">Email:</span> {selectedCustomer.email || 'N/A'}
-                        </div>
-                        <div>
                           <span className="font-medium">Work Type:</span> {selectedCustomer.type_of_work || 'N/A'}
                         </div>
                         <div>
-                          <span className="font-medium">Assigned to:</span> {employees.find(emp => emp.id === parseInt(selectedCustomer.assigned_to))?.name || 'Unassigned'}
+                          <span className="font-medium">Mode of Payment:</span> {selectedCustomer.mode_of_payment || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="font-medium">Created by:</span> {selectedCustomer.employee_name || 'Unknown'}
                         </div>
                       </div>
                     </div>
@@ -940,9 +966,6 @@ export default function CustomerManagement() {
                           <span className="font-medium">Paid Amount:</span> ₹{selectedCustomer.paid_amount || 0}
                         </div>
                         <div>
-                          <span className="font-medium">Credit Amount:</span> ₹{selectedCustomer.credit_amount || 0}
-                        </div>
-                        <div>
                           <span className="font-medium">Created:</span> {new Date(selectedCustomer.created_at).toLocaleDateString()}
                         </div>
                       </div>
@@ -953,28 +976,29 @@ export default function CustomerManagement() {
             )}
 
             {/* Claims Modal */}
-            {showClaimsModal && selectedCard && (
+            {showClaimsModal && (
               <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{backgroundColor: 'rgba(0, 0, 0, 0.1)'}} onClick={closeClaimsModal}>
-                <div className="bg-white rounded-lg p-8 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] ml-32" onClick={(e) => e.stopPropagation()}>
+                <div className="bg-white rounded-lg p-8 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
                   <div className="space-y-6">
-                    {/* User Card */}
-                    <div className="flex items-center justify-center">
-                      <UserCard 
-                        card={selectedCard}
-                        isDarkMode={isDarkMode}
-                      />
-                    </div>
-                    
-                    {/* Claims Table */}
-                    <div className="bg-white rounded-lg border border-gray-200">
-                      <ClaimsTable 
-                        claims={claims}
-                        isDarkMode={isDarkMode}
-                      />
-                    </div>
+                    <AdminClaimsTable
+                      claims={claims}
+                      card={selectedCard}
+                      onEditCard={(card) => handleEditCardFromModal(card)}
+                    />
                   </div>
                 </div>
               </div>
+            )}
+
+            {showCardEditModal && cardBeingEdited && (
+              <EditCardModal
+                card={cardBeingEdited}
+                onClose={() => setShowCardEditModal(false)}
+                onUpdated={(updatedCard) => {
+                  handleCardUpdate(updatedCard)
+                  setShowCardEditModal(false)
+                }}
+              />
             )}
 
           </div>

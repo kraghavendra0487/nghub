@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
 import { useAuth } from '../../context/AuthContext'
 import API_BASE_URL from '../../config/api'
+import RecentCampsMaps from '../../components/RecentCampsMaps'
 
 export default function CampManagement() {
   const { user, getAuthHeaders, logout } = useAuth()
@@ -337,6 +338,12 @@ export default function CampManagement() {
               </div>
             </div>
 
+            <div className="mb-8">
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <RecentCampsMaps camps={camps} title="Recent Camps" onViewMore={() => navigate('/admin/camps')} />
+              </div>
+            </div>
+
             {/* Camps Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {getFilteredCamps().map((camp) => (
@@ -416,22 +423,22 @@ export default function CampManagement() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex space-x-2 pt-2">
+                    <div className="flex space-x-2 pt-3">
                       <button
                         onClick={() => handleViewCamp(camp)}
-                        className="flex-1 px-3 py-2 text-xs font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-semibold text-blue-600 border border-blue-100 rounded-full hover:bg-blue-50 transition-colors"
                       >
                         View
                       </button>
                       <button
                         onClick={() => handleEditCamp(camp)}
-                        className="flex-1 px-3 py-2 text-xs font-medium bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-semibold text-emerald-600 border border-emerald-100 rounded-full hover:bg-emerald-50 transition-colors"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteCamp(camp.id)}
-                        className="flex-1 px-3 py-2 text-xs font-medium bg-red-500 text-white rounded-md hover:bg-red-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-semibold text-red-600 border border-red-100 rounded-full hover:bg-red-50 transition-colors"
                       >
                         Delete
                       </button>
