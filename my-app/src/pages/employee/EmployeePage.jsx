@@ -57,7 +57,7 @@ export default function EmployeeDashboard() {
     return Number.isFinite(n) ? n : 0
   }
 
-  const totalRevenue = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
+  const totalPaid = customers.reduce((sum, c) => sum + toNumber(c.paid_amount), 0)
   const totalDiscussed = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
   const pendingCustomerPayments = customers.reduce((sum, c) => sum + toNumber(c.pending_amount), 0)
   const pendingClaimsAmount = claims.reduce((sum, cl) => sum + toNumber(cl.pending_amount || 0), 0)
@@ -257,7 +257,7 @@ export default function EmployeeDashboard() {
             <div className="mt-8 mb-8">
               <FinancialMetrics
                 items={[
-                  { id: 1, name: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, color: 'text-emerald-500', bgColor: 'bg-emerald-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" />) },
+                  { id: 1, name: 'Total Paid Till Now', value: `₹${totalPaid.toLocaleString()}`, color: 'text-emerald-500', bgColor: 'bg-emerald-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" />) },
                   { id: 2, name: 'Pending Cust. Payments', value: `₹${pendingCustomerPayments.toLocaleString()}`, color: 'text-amber-500', bgColor: 'bg-amber-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />) },
                   { id: 3, name: 'Pending Claims Amount', value: `₹${pendingClaimsAmount.toLocaleString()}`, color: 'text-red-500', bgColor: 'bg-red-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />) },
                   { id: 4, name: 'Discussed Amount', value: `₹${totalDiscussed.toLocaleString()}`, color: 'text-indigo-500', bgColor: 'bg-indigo-100', Icon: (props) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />) }
