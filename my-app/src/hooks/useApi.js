@@ -1,65 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-
-const AUTH_KEYS = ['authToken', 'authUser', 'token', 'user', 'jwt', 'jwtToken'];
-
-const broadcastLogout = () => {
-  try {
-    const bc = new BroadcastChannel('auth-bc');
-    bc.postMessage({ type: 'logout' });
-    bc.close();
-  } catch {}
-};
-
-const clearCreds = () => {
-  try {
-    AUTH_KEYS.forEach((k) => {
-      localStorage.removeItem(k);
-      sessionStorage.removeItem(k);
-    });
-  } catch {}
-};
+import API_BASE_URL from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const useApi = (url, endpoint) => {
-  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const mounted = useRef(true);
+  const { getAuthHeaders, logout } = useAuth();
 
   const fetchData = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     const cacheBuster = `_t=${Date.now()}`;
+    const base = url || API_BASE_URL;
     const finalUrl = endpoint.includes('?')
-      ? `${url}${endpoint}&${cacheBuster}`
-      : `${url}${endpoint}?${cacheBuster}`;
+      ? `${base}${endpoint}&${cacheBuster}`
+      : `${base}${endpoint}?${cacheBuster}`;
 
     try {
       const res = await fetch(finalUrl, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
-
-      // 🔒 global unauthorized handling
-      if (res.status === 401 || res.status === 403) {
-        clearCreds();
-        broadcastLogout();
-        if (mounted.current) {
-          setData(null);
-          setError('Unauthorized');
-          setIsLoading(false);
-        }
-        window.location.replace('/');
-        return;
-      }
 
       if (!res.ok) {
         // best-effort error body
@@ -68,7 +31,13 @@ const useApi = (url, endpoint) => {
           const errJson = await res.json();
           msg = errJson?.message || msg;
         } catch {}
-        throw new Error(msg);
+        if (res.status === 401 || res.status === 403) {
+          // Auto-logout on auth failures
+          logout(true);
+        }
+        const errorObj = new Error(msg);
+        errorObj.status = res.status;
+        throw errorObj;
       }
 
       const result = await res.json();

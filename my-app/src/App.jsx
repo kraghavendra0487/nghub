@@ -1,12 +1,167 @@
+// import React from 'react';
+// import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// import { AuthProvider } from './context/AuthContext';
+// import ProtectedRoute from './routes/ProtectedRoute';
+// import RootRedirect from './routes/RootRedirect';
+// import ErrorBoundary from './components/ErrorBoundary';
+// import NotFound from './components/NotFound';
+
+// // Import pages
+// import LoginPage from './pages/LoginPage';
+// import AdminPage from './pages/admin/AdminDashboard';
+// import AdminEmployeesPage from './pages/admin/AdminEmployeesPage';
+// import AdminEmployeeDetailsPage from './pages/admin/AdminEmployeeDetailsPage';
+// import AdminAddEmployeePage from './pages/admin/AdminAddEmployeePage';
+// import AdminCustomersPage from './pages/admin/AdminCustomersPage';
+// import AdminCampsPage from './pages/admin/AdminCampsPage';
+// import AdminAddCampPage from './pages/admin/AdminAddCampPage';
+// import EmployeePage from './pages/employee/EmployeePage';
+// import EmployeeCustomersPage from './pages/employee/EmployeeCustomersPage';
+// import EmployeeAddCustomerPage from './pages/employee/EmployeeAddCustomerPage';
+// import EmployeeCampsPage from './pages/employee/EmployeeCampsPage';
+// import EmployeeProfilePage from './pages/employee/EmployeeProfilePage';
+
+// function App() {
+//   return (
+//     <AuthProvider>
+//       <Router>
+//         <ErrorBoundary>
+//           <Routes>
+//             {/* Public Routes */}
+//             <Route path="/login" element={<LoginPage />} />
+            
+//             {/* Smart root redirect based on auth state */}
+//             <Route path="/" element={<RootRedirect />} />
+            
+//             {/* Protected Admin Routes */}
+//             <Route 
+//               path="/admin" 
+//               element={<Navigate to="/admin/dashboard" replace />}
+//             />
+//             <Route 
+//               path="/admin/dashboard" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['admin']}>
+//                   <AdminPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/admin/employees" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['admin']}>
+//                   <AdminEmployeesPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/admin/employees/:id" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['admin']}>
+//                   <AdminEmployeeDetailsPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/admin/add-employee" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['admin']}>
+//                   <AdminAddEmployeePage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/admin/customers" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['admin']}>
+//                   <AdminCustomersPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/admin/camps" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['admin']}>
+//                   <AdminCampsPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/admin/add-camp" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['admin']}>
+//                   <AdminAddCampPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+            
+//             {/* Protected Employee Routes */}
+//             <Route 
+//               path="/employee" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['employee']}>
+//                   <EmployeePage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/employee/customers" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['employee']}>
+//                   <EmployeeCustomersPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/employee/add-customer" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['employee']}>
+//                   <EmployeeAddCustomerPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/employee/camps" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['employee']}>
+//                   <EmployeeCampsPage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+//             <Route 
+//               path="/employee/profile" 
+//               element={
+//                 <ProtectedRoute allowedRoles={['employee']}>
+//                   <EmployeeProfilePage />
+//                 </ProtectedRoute>
+//               } 
+//             />
+            
+//             {/* Catch all route */}
+//             <Route path="*" element={<NotFound />} />
+//           </Routes>
+//         </ErrorBoundary>
+//       </Router>
+//     </AuthProvider>
+//   );
+// }
+
+// export default App
+// 
+// 
+// ;
+
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './routes/ProtectedRoute';
+import RootRedirect from './routes/RootRedirect';
 import ErrorBoundary from './components/ErrorBoundary';
-import RouteGuard from './components/RouteGuard';
-import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './components/NotFound';
 
 // Import pages
+import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/admin/AdminDashboard';
 import AdminEmployeesPage from './pages/admin/AdminEmployeesPage';
 import AdminEmployeeDetailsPage from './pages/admin/AdminEmployeeDetailsPage';
@@ -20,138 +175,127 @@ import EmployeeAddCustomerPage from './pages/employee/EmployeeAddCustomerPage';
 import EmployeeCampsPage from './pages/employee/EmployeeCampsPage';
 import EmployeeProfilePage from './pages/employee/EmployeeProfilePage';
 
-// Import components
-import AnimatedLoginForm from './components/AnimatedLoginForm';
-import LoginForm from './components/LoginForm';
-import RegisterForm from './components/RegisterForm';
-import ForgotPasswordForm from './components/ForgotPasswordForm';
-
-const AppContent = () => {
-  const { user, loading, showForgotPassword, setShowForgotPassword, handleLogin } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center p-4">
-        {showForgotPassword ? (
-          <ForgotPasswordForm onBackToLogin={() => setShowForgotPassword(false)} />
-        ) : (
-          <AnimatedLoginForm 
-            onLogin={handleLogin} 
-            onForgotPassword={() => setShowForgotPassword(true)}
-          />
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={
-          <RouteGuard isPrivate={false}>
-            <div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center p-4">
-              {showForgotPassword ? (
-                <ForgotPasswordForm onBackToLogin={() => setShowForgotPassword(false)} />
-              ) : (
-                <AnimatedLoginForm 
-                  onLogin={handleLogin} 
-                  onForgotPassword={() => setShowForgotPassword(true)}
-                />
-              )}
-            </div>
-          </RouteGuard>
-        } />
-        
-        {/* Admin Routes */}
-        <Route path="/admin" element={
-          <ProtectedRoute role="admin">
-            <AdminPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/employees" element={
-          <ProtectedRoute role="admin">
-            <AdminEmployeesPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/employees/:id" element={
-          <ProtectedRoute role="admin">
-            <AdminEmployeeDetailsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/add-employee" element={
-          <ProtectedRoute role="admin">
-            <AdminAddEmployeePage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/customers" element={
-          <ProtectedRoute role="admin">
-            <AdminCustomersPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/camps" element={
-          <ProtectedRoute role="admin">
-            <AdminCampsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/add-camp" element={
-          <ProtectedRoute role="admin">
-            <AdminAddCampPage />
-          </ProtectedRoute>
-        } />
-        
-        {/* Employee Routes */}
-        <Route path="/employee" element={
-          <ProtectedRoute role="employee">
-            <EmployeePage />
-          </ProtectedRoute>
-        } />
-        <Route path="/employee/customers" element={
-          <ProtectedRoute role="employee">
-            <EmployeeCustomersPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/employee/add-customer" element={
-          <ProtectedRoute role="employee">
-            <EmployeeAddCustomerPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/employee/camps" element={
-          <ProtectedRoute role="employee">
-            <EmployeeCampsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/employee/profile" element={
-          <ProtectedRoute role="employee">
-            <EmployeeProfilePage />
-          </ProtectedRoute>
-        } />
-        
-        {/* Catch all route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-  );
-};
-
 function App() {
   return (
-    <ErrorBoundary>
+    <AuthProvider>
       <Router>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        <ErrorBoundary>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            
+            {/* Root redirect based on auth */}
+            <Route path="/" element={<RootRedirect />} />
+
+            {/* Admin redirect */}
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+
+            {/* Protected Admin Routes */}
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/employees" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminEmployeesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/employees/:id" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminEmployeeDetailsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/add-employee" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminAddEmployeePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/customers" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminCustomersPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/camps" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminCampsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/add-camp" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminAddCampPage />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Protected Employee Routes */}
+            <Route 
+              path="/employee" 
+              element={
+                <ProtectedRoute allowedRoles={['employee']}>
+                  <EmployeePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/employee/customers" 
+              element={
+                <ProtectedRoute allowedRoles={['employee']}>
+                  <EmployeeCustomersPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/employee/add-customer" 
+              element={
+                <ProtectedRoute allowedRoles={['employee']}>
+                  <EmployeeAddCustomerPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/employee/camps" 
+              element={
+                <ProtectedRoute allowedRoles={['employee']}>
+                  <EmployeeCampsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/employee/profile" 
+              element={
+                <ProtectedRoute allowedRoles={['employee']}>
+                  <EmployeeProfilePage />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Catch all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </Router>
-    </ErrorBoundary>
+    </AuthProvider>
   );
 }
 

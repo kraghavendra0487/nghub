@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 class UserService {
   // Get all users
@@ -89,6 +91,44 @@ class UserService {
       return { users };
     } catch (error) {
       console.error('Error getting employees:', error);
+      throw error;
+    }
+  }
+
+  // Login user
+  static async loginUser(email, password) {
+    try {
+      // Find user by email
+      const user = await User.findByEmail(email);
+      if (!user) {
+        throw new Error('Invalid email or password');
+      }
+
+      // Check password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new Error('Invalid email or password');
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { 
+          userId: user.id, 
+          email: user.email, 
+          role: user.role 
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      // Return user data without password
+      const { password: _, ...userWithoutPassword } = user;
+      return { 
+        user: userWithoutPassword, 
+        token 
+      };
+    } catch (error) {
+      console.error('Error logging in user:', error);
       throw error;
     }
   }

@@ -7,7 +7,7 @@ class Customer {
       const query = `
         SELECT c.*, u.name as employee_name, u.email as employee_email
         FROM customers c
-        LEFT JOIN users u ON c.employee_id = u.id
+        LEFT JOIN users u ON c.created_by = u.id
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query);
@@ -24,7 +24,7 @@ class Customer {
       const query = `
         SELECT c.*, u.name as employee_name, u.email as employee_email
         FROM customers c
-        LEFT JOIN users u ON c.employee_id = u.id
+        LEFT JOIN users u ON c.created_by = u.id
         WHERE c.id = $1
       `;
       const result = await pool.query(query, [id]);
@@ -41,8 +41,8 @@ class Customer {
       const query = `
         SELECT c.*, u.name as employee_name, u.email as employee_email
         FROM customers c
-        LEFT JOIN users u ON c.employee_id = u.id
-        WHERE c.employee_id = $1
+        LEFT JOIN users u ON c.created_by = u.id
+        WHERE c.created_by = $1
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query, [employeeId]);
@@ -56,13 +56,13 @@ class Customer {
   // Create new customer
   static async create(customerData) {
     try {
-      const { name, email, contact, address, employee_id } = customerData;
+      const { customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, created_by } = customerData;
       const query = `
-        INSERT INTO customers (name, email, contact, address, employee_id)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO customers (customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `;
-      const values = [name, email, contact, address, employee_id];
+      const values = [customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, created_by];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -74,14 +74,14 @@ class Customer {
   // Update customer
   static async update(id, customerData) {
     try {
-      const { name, email, contact, address, employee_id } = customerData;
+      const { customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment } = customerData;
       const query = `
         UPDATE customers 
-        SET name = $1, email = $2, contact = $3, address = $4, employee_id = $5, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $6
+        SET customer_name = $1, phone_number = $2, type_of_work = $3, discussed_amount = $4, paid_amount = $5, pending_amount = $6, mode_of_payment = $7, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $8
         RETURNING *
       `;
-      const values = [name, email, contact, address, employee_id, id];
+      const values = [customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, id];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -108,8 +108,8 @@ class Customer {
       const query = `
         SELECT c.*, u.name as employee_name, u.email as employee_email
         FROM customers c
-        LEFT JOIN users u ON c.employee_id = u.id
-        WHERE c.name ILIKE $1 OR c.email ILIKE $1 OR c.contact ILIKE $1
+        LEFT JOIN users u ON c.created_by = u.id
+        WHERE c.customer_name ILIKE $1 OR c.phone_number ILIKE $1 OR c.type_of_work ILIKE $1
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query, [`%${searchTerm}%`]);

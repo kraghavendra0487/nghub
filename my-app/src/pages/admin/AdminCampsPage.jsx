@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
+import { useAuth } from '../../context/AuthContext'
+import API_BASE_URL from '../../config/api'
 
 export default function CampManagement() {
-  const [user, setUser] = useState(null)
+  const { user, getAuthHeaders, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [camps, setCamps] = useState([])
@@ -41,53 +43,25 @@ export default function CampManagement() {
   })
 
   useEffect(() => {
-    const authenticateUser = async () => {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        navigate('/')
-        return
-      }
-
-      try {
-        const response = await fetch('/api/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await response.json()
-        
-        if (data.user && data.user.role === 'admin') {
-          setUser(data.user)
-          await Promise.all([fetchCamps(), fetchEmployees()])
-        } else {
-          navigate('/employee')
-        }
-      } catch (error) {
-        console.error('Authentication error:', error)
-        localStorage.removeItem('token')
-        navigate('/')
-      } finally {
-        setLoading(false)
-      }
+    if (!user) {
+      return
     }
-
-    authenticateUser()
-  }, [navigate])
+    if (user.role !== 'admin') {
+      navigate('/employee', { replace: true })
+      return
+    }
+    Promise.all([fetchCamps(), fetchEmployees()]).finally(() => setLoading(false))
+  }, [user, navigate])
 
   const fetchCamps = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/camps', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/camps`, {
+        headers: getAuthHeaders()
       })
 
       const data = await response.json()
-      if (data.camps) {
-        setCamps(data.camps)
-      }
+      const list = Array.isArray(data) ? data : (data.camps || [])
+      setCamps(list)
     } catch (error) {
       console.error('Error fetching camps:', error)
       setError('Failed to fetch camps')
@@ -97,17 +71,13 @@ export default function CampManagement() {
 
   const fetchEmployees = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/employees', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/users/employees`, {
+        headers: getAuthHeaders()
       })
 
       const data = await response.json()
-      if (data.employees) {
-        setEmployees(data.employees)
-      }
+      const employees = Array.isArray(data) ? data : (data.users || data.employees || [])
+      setEmployees(employees)
     } catch (error) {
       console.error('Error fetching employees:', error)
     }
@@ -136,12 +106,9 @@ export default function CampManagement() {
     if (!confirm('Are you sure you want to delete this camp?')) return
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/camps/${campId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/camps/${campId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: getAuthHeaders()
       })
 
       if (response.ok) {
@@ -162,13 +129,9 @@ export default function CampManagement() {
   const handleAddCamp = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/camps', {
+      const response = await fetch(`${API_BASE_URL}/api/camps`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(newCamp)
       })
 
@@ -201,13 +164,9 @@ export default function CampManagement() {
   const handleUpdateCamp = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/camps/${editingCamp.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/camps/${editingCamp.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(editCamp)
       })
 
@@ -258,15 +217,7 @@ export default function CampManagement() {
     return null
   }
 
-  const handleLogout = () => {
-    // Clear authentication data
-                localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('authState')
-    
-    // Force redirect to login page
-    window.location.href = '/login'
-  }
+  const handleLogout = () => logout()
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>

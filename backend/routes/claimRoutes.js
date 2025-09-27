@@ -1,23 +1,20 @@
 const express = require('express');
-const { protect, authorize } = require('../middleware/authMiddleware');
 const ClaimController = require('../controllers/claimController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// All routes are protected
-router.use(protect);
+// Read operations for authenticated users
+router.get('/', protect, authorize('admin', 'employee'), ClaimController.getAllClaims);
+router.get('/:id', protect, authorize('admin', 'employee'), ClaimController.getClaimById);
+router.get('/status/:status', protect, authorize('admin', 'employee'), ClaimController.getClaimsByStatus);
+router.get('/card/:cardId', protect, authorize('admin', 'employee'), ClaimController.getClaimsByCardId);
+router.get('/customer/:customerId', protect, authorize('admin', 'employee'), ClaimController.getClaimsByCustomerId);
+router.get('/employee/:employeeId', protect, authorize('admin', 'employee'), ClaimController.getClaimsByEmployeeId);
 
-// Admin routes
-router.get('/', authorize('admin'), ClaimController.getAllClaims);
-router.get('/:id', authorize('admin'), ClaimController.getClaimById);
-router.post('/', authorize('admin'), ClaimController.createClaim);
-router.put('/:id', authorize('admin'), ClaimController.updateClaim);
-router.delete('/:id', authorize('admin'), ClaimController.deleteClaim);
-router.get('/status/:status', authorize('admin'), ClaimController.getClaimsByStatus);
-
-// Employee routes
-router.get('/card/:cardId', authorize('employee'), ClaimController.getClaimsByCardId);
-router.get('/customer/:customerId', authorize('employee'), ClaimController.getClaimsByCustomerId);
-router.get('/employee/:employeeId', authorize('employee'), ClaimController.getClaimsByEmployeeId);
+// Write operations restricted to admin
+router.post('/', protect, authorize('admin'), ClaimController.createClaim);
+router.put('/:id', protect, authorize('admin'), ClaimController.updateClaim);
+router.delete('/:id', protect, authorize('admin'), ClaimController.deleteClaim);
 
 module.exports = router;

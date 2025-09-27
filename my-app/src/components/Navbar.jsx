@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 
 const Navbar = ({ user, onLogout }) => {
+  const { logout } = useAuth()
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="container mx-auto px-4">
@@ -14,7 +16,7 @@ const Navbar = ({ user, onLogout }) => {
               <>
                 <span className="text-gray-700">Welcome, {user.name}</span>
                 <button
-                  onClick={onLogout}
+                  onClick={() => onLogout ? onLogout() : logout()}
                   className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Logout

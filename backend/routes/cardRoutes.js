@@ -1,21 +1,18 @@
 const express = require('express');
-const { protect, authorize } = require('../middleware/authMiddleware');
 const CardController = require('../controllers/cardController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// All routes are protected
-router.use(protect);
+// Read operations
+router.get('/', protect, authorize('admin', 'employee'), CardController.getAllCards);
+router.get('/:id', protect, authorize('admin', 'employee'), CardController.getCardById);
+router.get('/customer/:customerId', protect, authorize('admin', 'employee'), CardController.getCardByCustomerId);
+router.get('/employee/:employeeId', protect, authorize('admin', 'employee'), CardController.getCardsByEmployeeId);
 
-// Admin routes
-router.get('/', authorize('admin'), CardController.getAllCards);
-router.get('/:id', authorize('admin'), CardController.getCardById);
-router.post('/', authorize('admin'), CardController.createCard);
-router.put('/:id', authorize('admin'), CardController.updateCard);
-router.delete('/:id', authorize('admin'), CardController.deleteCard);
-
-// Employee routes
-router.get('/customer/:customerId', authorize('employee'), CardController.getCardByCustomerId);
-router.get('/employee/:employeeId', authorize('employee'), CardController.getCardsByEmployeeId);
+// Write operations: admin only
+router.post('/', protect, authorize('admin'), CardController.createCard);
+router.put('/:id', protect, authorize('admin'), CardController.updateCard);
+router.delete('/:id', protect, authorize('admin'), CardController.deleteCard);
 
 module.exports = router;

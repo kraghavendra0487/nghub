@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
+import { useAuth } from '../../context/AuthContext'
+import API_BASE_URL from '../../config/api'
 
 export default function AddCampPage() {
-  const [user, setUser] = useState(null)
+  const { user, getAuthHeaders, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [employees, setEmployees] = useState([])
   const [formData, setFormData] = useState({
@@ -22,52 +24,26 @@ export default function AddCampPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const authenticateUser = async () => {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        navigate('/')
-        return
-      }
-
-      try {
-        const response = await fetch('/api/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await response.json()
-        
-        if (data.user && data.user.role === 'admin') {
-          setUser(data.user)
-          fetchEmployees()
-        } else {
-          navigate('/employee') // Redirect if not admin
-        }
-      } catch (error) {
-        console.error('Authentication error:', error)
-        localStorage.removeItem('token')
-        navigate('/')
-      } finally {
-        setLoading(false)
-      }
+    if (!user) {
+      setLoading(false)
+      navigate('/login', { replace: true })
+      return
     }
-
-    authenticateUser()
-  }, [navigate])
+    if (user.role !== 'admin') {
+      navigate('/employee', { replace: true })
+      return
+    }
+    fetchEmployees().finally(() => setLoading(false))
+  }, [user, navigate])
 
   const fetchEmployees = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/employees', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/users/employees`, {
+        headers: getAuthHeaders()
       })
       const data = await response.json()
       if (response.ok) {
-        // Filter out admin users, only show employees
-        const employeeOnly = (data.employees || []).filter((emp) => emp.role === 'employee')
+        const employeeOnly = (data.users || data.employees || data || []).filter((emp) => emp.role === 'employee')
         setEmployees(employeeOnly)
       }
     } catch (error) {
@@ -99,9 +75,7 @@ export default function AddCampPage() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      
-      // Convert assigned_to array to PostgreSQL array format
+      // Convert assigned_to array passed as JSON (backend handles storage)
       const campData = {
         ...formData,
         assigned_to: formData.assigned_to // Send as JSON array, let backend handle conversion
@@ -110,12 +84,9 @@ export default function AddCampPage() {
       console.log('Sending camp data:', campData)
       console.log('assigned_to format:', campData.assigned_to)
       
-      const response = await fetch('/api/camps', {
+      const response = await fetch(`${API_BASE_URL}/api/camps`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(campData),
       })
 
@@ -162,15 +133,7 @@ export default function AddCampPage() {
     return null // Will redirect
   }
 
-  const handleLogout = () => {
-    // Clear authentication data
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('authState')
-    
-    // Force redirect to login page
-    window.location.href = '/login'
-  }
+  const handleLogout = () => logout()
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>

@@ -5,7 +5,7 @@ class Card {
   static async findByCustomerId(customerId) {
     try {
       const query = `
-        SELECT c.*, cu.name as customer_name, cu.email as customer_email
+        SELECT c.*, cu.customer_name, cu.phone_number as customer_phone
         FROM cards c
         LEFT JOIN customers cu ON c.customer_id = cu.id
         WHERE c.customer_id = $1
@@ -22,7 +22,7 @@ class Card {
   static async findById(id) {
     try {
       const query = `
-        SELECT c.*, cu.name as customer_name, cu.email as customer_email
+        SELECT c.*, cu.customer_name, cu.phone_number as customer_phone
         FROM cards c
         LEFT JOIN customers cu ON c.customer_id = cu.id
         WHERE c.id = $1
@@ -39,7 +39,7 @@ class Card {
   static async findAll() {
     try {
       const query = `
-        SELECT c.*, cu.name as customer_name, cu.email as customer_email
+        SELECT c.*, cu.customer_name, cu.phone_number as customer_phone
         FROM cards c
         LEFT JOIN customers cu ON c.customer_id = cu.id
         ORDER BY c.created_at DESC
@@ -55,13 +55,13 @@ class Card {
   // Create new card
   static async create(cardData) {
     try {
-      const { customer_id, card_number, expiry_date, cvv, card_holder_name, card_type } = cardData;
+      const { customer_id, card_number, register_number, card_holder_name, agent_name, agent_mobile, created_by } = cardData;
       const query = `
-        INSERT INTO cards (customer_id, card_number, expiry_date, cvv, card_holder_name, card_type)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO cards (customer_id, card_number, register_number, card_holder_name, agent_name, agent_mobile, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `;
-      const values = [customer_id, card_number, expiry_date, cvv, card_holder_name, card_type];
+      const values = [customer_id, card_number, register_number, card_holder_name, agent_name, agent_mobile, created_by];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -73,15 +73,15 @@ class Card {
   // Update card
   static async update(id, cardData) {
     try {
-      const { card_number, expiry_date, cvv, card_holder_name, card_type } = cardData;
+      const { card_number, register_number, card_holder_name, agent_name, agent_mobile } = cardData;
       const query = `
         UPDATE cards 
-        SET card_number = $1, expiry_date = $2, cvv = $3, 
-            card_holder_name = $4, card_type = $5, updated_at = CURRENT_TIMESTAMP
+        SET card_number = $1, register_number = $2, 
+            card_holder_name = $3, agent_name = $4, agent_mobile = $5, updated_at = CURRENT_TIMESTAMP
         WHERE id = $6
         RETURNING *
       `;
-      const values = [card_number, expiry_date, cvv, card_holder_name, card_type, id];
+      const values = [card_number, register_number, card_holder_name, agent_name, agent_mobile, id];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -106,10 +106,10 @@ class Card {
   static async findByEmployeeId(employeeId) {
     try {
       const query = `
-        SELECT c.*, cu.name as customer_name, cu.email as customer_email
+        SELECT c.*, cu.customer_name, cu.phone_number as customer_phone
         FROM cards c
         LEFT JOIN customers cu ON c.customer_id = cu.id
-        WHERE cu.employee_id = $1
+        WHERE cu.created_by = $1
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query, [employeeId]);

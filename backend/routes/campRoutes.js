@@ -1,22 +1,19 @@
 const express = require('express');
-const { protect, authorize } = require('../middleware/authMiddleware');
 const CampController = require('../controllers/campController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// All routes are protected
-router.use(protect);
+// Read operations for authenticated users
+router.get('/', protect, authorize('admin', 'employee'), CampController.getAllCamps);
+router.get('/search', protect, authorize('admin', 'employee'), CampController.searchCamps);
+router.get('/status/:status', protect, authorize('admin', 'employee'), CampController.getCampsByStatus);
+router.get('/employee/:employeeId', protect, authorize('admin', 'employee'), CampController.getCampsByEmployeeId);
+router.get('/:id', protect, authorize('admin', 'employee'), CampController.getCampById);
 
-// Admin routes
-router.get('/', authorize('admin'), CampController.getAllCamps);
-router.get('/search', authorize('admin'), CampController.searchCamps);
-router.post('/', authorize('admin'), CampController.createCamp);
-router.get('/:id', authorize('admin'), CampController.getCampById);
-router.put('/:id', authorize('admin'), CampController.updateCamp);
-router.delete('/:id', authorize('admin'), CampController.deleteCamp);
-router.get('/status/:status', authorize('admin'), CampController.getCampsByStatus);
-
-// Employee routes
-router.get('/employee/:employeeId', authorize('employee'), CampController.getCampsByEmployeeId);
+// Write operations only for admins
+router.post('/', protect, authorize('admin'), CampController.createCamp);
+router.put('/:id', protect, authorize('admin'), CampController.updateCamp);
+router.delete('/:id', protect, authorize('admin'), CampController.deleteCamp);
 
 module.exports = router;

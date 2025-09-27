@@ -5,9 +5,10 @@ class Camp {
   static async findAll() {
     try {
       const query = `
-        SELECT c.*, u.name as employee_name, u.email as employee_email
+        SELECT c.*, u1.name as conducted_by_name, u1.email as conducted_by_email, u2.name as created_by_name, u2.email as created_by_email
         FROM camps c
-        LEFT JOIN users u ON c.employee_id = u.id
+        LEFT JOIN users u1 ON c.conducted_by = u1.employee_id
+        LEFT JOIN users u2 ON c.created_by = u2.id
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query);
@@ -22,9 +23,10 @@ class Camp {
   static async findById(id) {
     try {
       const query = `
-        SELECT c.*, u.name as employee_name, u.email as employee_email
+        SELECT c.*, u1.name as conducted_by_name, u1.email as conducted_by_email, u2.name as created_by_name, u2.email as created_by_email
         FROM camps c
-        LEFT JOIN users u ON c.employee_id = u.id
+        LEFT JOIN users u1 ON c.conducted_by = u1.employee_id
+        LEFT JOIN users u2 ON c.created_by = u2.id
         WHERE c.id = $1
       `;
       const result = await pool.query(query, [id]);
@@ -39,10 +41,11 @@ class Camp {
   static async findByEmployeeId(employeeId) {
     try {
       const query = `
-        SELECT c.*, u.name as employee_name, u.email as employee_email
+        SELECT c.*, u1.name as conducted_by_name, u1.email as conducted_by_email, u2.name as created_by_name, u2.email as created_by_email
         FROM camps c
-        LEFT JOIN users u ON c.employee_id = u.id
-        WHERE c.employee_id = $1
+        LEFT JOIN users u1 ON c.conducted_by = u1.employee_id
+        LEFT JOIN users u2 ON c.created_by = u2.id
+        WHERE c.conducted_by = $1 OR $1 = ANY(c.assigned_to) OR c.created_by = $1
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query, [employeeId]);
@@ -56,13 +59,13 @@ class Camp {
   // Create new camp
   static async create(campData) {
     try {
-      const { name, location, start_date, end_date, description, employee_id } = campData;
+      const { camp_date, location, location_link, phone_number, status, conducted_by, assigned_to, created_by } = campData;
       const query = `
-        INSERT INTO camps (name, location, start_date, end_date, description, employee_id)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO camps (camp_date, location, location_link, phone_number, status, conducted_by, assigned_to, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `;
-      const values = [name, location, start_date, end_date, description, employee_id];
+      const values = [camp_date, location, location_link, phone_number, status, conducted_by, assigned_to, created_by];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -74,15 +77,15 @@ class Camp {
   // Update camp
   static async update(id, campData) {
     try {
-      const { name, location, start_date, end_date, description, employee_id, status } = campData;
+      const { camp_date, location, location_link, phone_number, status, conducted_by, assigned_to } = campData;
       const query = `
         UPDATE camps 
-        SET name = $1, location = $2, start_date = $3, end_date = $4, 
-            description = $5, employee_id = $6, status = $7, updated_at = CURRENT_TIMESTAMP
+        SET camp_date = $1, location = $2, location_link = $3, phone_number = $4, 
+            status = $5, conducted_by = $6, assigned_to = $7, last_updated = CURRENT_TIMESTAMP
         WHERE id = $8
         RETURNING *
       `;
-      const values = [name, location, start_date, end_date, description, employee_id, status, id];
+      const values = [camp_date, location, location_link, phone_number, status, conducted_by, assigned_to, id];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -107,9 +110,10 @@ class Camp {
   static async findByStatus(status) {
     try {
       const query = `
-        SELECT c.*, u.name as employee_name, u.email as employee_email
+        SELECT c.*, u1.name as conducted_by_name, u1.email as conducted_by_email, u2.name as created_by_name, u2.email as created_by_email
         FROM camps c
-        LEFT JOIN users u ON c.employee_id = u.id
+        LEFT JOIN users u1 ON c.conducted_by = u1.employee_id
+        LEFT JOIN users u2 ON c.created_by = u2.id
         WHERE c.status = $1
         ORDER BY c.created_at DESC
       `;
@@ -125,10 +129,11 @@ class Camp {
   static async search(searchTerm) {
     try {
       const query = `
-        SELECT c.*, u.name as employee_name, u.email as employee_email
+        SELECT c.*, u1.name as conducted_by_name, u1.email as conducted_by_email, u2.name as created_by_name, u2.email as created_by_email
         FROM camps c
-        LEFT JOIN users u ON c.employee_id = u.id
-        WHERE c.name ILIKE $1 OR c.location ILIKE $1 OR c.description ILIKE $1
+        LEFT JOIN users u1 ON c.conducted_by = u1.employee_id
+        LEFT JOIN users u2 ON c.created_by = u2.id
+        WHERE c.location ILIKE $1 OR c.phone_number ILIKE $1
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query, [`%${searchTerm}%`]);

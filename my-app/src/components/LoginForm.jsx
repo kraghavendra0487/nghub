@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 import { validateEmail, validatePassword, handleApiError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 
 const LoginForm = ({ onLogin, onForgotPassword }) => {
+  const { login, loginInProgress } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -45,27 +47,16 @@ const LoginForm = ({ onLogin, onForgotPassword }) => {
     try {
       console.log('Attempting login with:', { email: formData.email })
       
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password
-        }),
-      })
+      const result = await login(formData.email.trim(), formData.password)
 
-      console.log('Login response status:', response.status)
-
-      const data = await response.json()
-      console.log('Login response data:', data)
-
-      if (response.ok) {
+      if (result.success) {
         showSuccessToast('Login successful!')
-        onLogin(data.token, data.user)
+        // onLogin callback is optional, mainly for backward compatibility
+        if (onLogin) {
+          onLogin(result.user)
+        }
       } else {
-        const errorMessage = data.error || 'Login failed'
+        const errorMessage = result.error || 'Login failed'
         setError(errorMessage)
         showErrorToast(errorMessage)
       }
@@ -121,10 +112,10 @@ const LoginForm = ({ onLogin, onForgotPassword }) => {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || loginInProgress}
         className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white py-2 px-4 rounded-md font-medium transition-colors"
       >
-        {loading ? 'Logging in...' : 'Login'}
+        {(loading || loginInProgress) ? 'Logging in...' : 'Login'}
       </button>
 
       {onForgotPassword && (

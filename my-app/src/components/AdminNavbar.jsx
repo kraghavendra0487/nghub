@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../context/AuthContext'
 
 export default function AdminNavbar({ user, isDarkMode, setIsDarkMode, currentPage }) {
   const navigate = useNavigate()
-  const { handleLogout } = useAuth()
+  const { logout } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const navigationItems = [
@@ -89,7 +89,7 @@ export default function AdminNavbar({ user, isDarkMode, setIsDarkMode, currentPa
               {isDarkMode ? '☀️ Light' : '🌙 Dark'}
             </button>
             <button
-              onClick={handleLogout}
+              onClick={logout}
               className="px-2 py-1 rounded text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
               Logout

@@ -1,94 +1,126 @@
-const AuthService = require('../services/authService');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const pool = require('../config/database');
 
 class AuthController {
-  // Login user
+  // 🔑 LOGIN - Validate credentials and return JWT
   static async login(req, res) {
     try {
       const { email, password } = req.body;
 
-      console.log('🔐 Login attempt:', { email: email ? 'provided' : 'missing', password: password ? 'provided' : 'missing' });
-
-      // Validate input
+      // Validation
       if (!email || !password) {
-        console.log('❌ Missing credentials:', { email: !!email, password: !!password });
-        return res.status(400).json({ error: 'Email and password are required' });
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Email and password are required' 
+        });
       }
 
-      // Attempt login
-      const result = await AuthService.login(email.trim(), password);
+      // Find user by email
+      const userQuery = 'SELECT id, employee_id, name, email, contact, role, password FROM users WHERE email = $1';
+      const userResult = await pool.query(userQuery, [email]);
 
-      console.log('✅ Login successful for user:', email, 'Role:', result.user.role);
+      if (userResult.rows.length === 0) {
+        return res.status(401).json({ 
+          success: false, 
+          error: 'Invalid email or password' 
+        });
+      }
+
+      const user = userResult.rows[0];
+
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ 
+          success: false, 
+          error: 'Invalid email or password' 
+        });
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { 
+          userId: user.id, 
+          email: user.email, 
+          role: user.role 
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      // Return user data without password
+      const { password: _, ...userWithoutPassword } = user;
 
       res.json({
-        message: 'Login successful',
-        token: result.token,
-        user: result.user
+        success: true,
+        token,
+        user: userWithoutPassword
       });
+
     } catch (error) {
-      console.log("❌ Login error:", error.message);
-      res.status(400).json({ error: error.message });
+      console.error('❌ Login error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Internal server error' 
+      });
     }
   }
 
-  // Register user
-  static async register(req, res) {
+  // 🔓 LOGOUT - Clear token (client-side mainly)
+  static async logout(req, res) {
     try {
-      const { employee_id, name, email, contact, password, role } = req.body;
+      // In a production app, you might:
+      // 1. Add token to blacklist
+      // 2. Update user's token_version in DB
+      // 3. Clear server-side sessions
 
-      console.log('📝 Registration attempt:', { email: email ? 'provided' : 'missing', name: name ? 'provided' : 'missing' });
-
-      // Validate input
-      if (!name || !email || !contact || !password) {
-        return res.status(400).json({ error: 'All fields are required' });
-      }
-
-      // Attempt registration
-      const result = await AuthService.register({
-        employee_id,
-        name,
-        email: email.trim(),
-        contact,
-        password,
-        role: role || 'employee'
-      });
-
-      console.log('✅ Registration successful for user:', email);
-
-      res.status(201).json({
-        message: 'Registration successful',
-        token: result.token,
-        user: result.user
+      res.json({
+        success: true,
+        message: 'Logged out successfully'
       });
     } catch (error) {
-      console.log("❌ Registration error:", error.message);
-      res.status(400).json({ error: error.message });
+      console.error('❌ Logout error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Logout failed' 
+      });
     }
   }
 
-  // Get user profile
+  // 🔍 VALIDATE TOKEN - Check if token is still valid
+  static async validateToken(req, res) {
+    try {
+      // If we reach here, the token is valid (middleware verified it)
+      // req.user is set by the auth middleware
+      res.json({
+        success: true,
+        valid: true,
+        user: req.user
+      });
+    } catch (error) {
+      console.error('❌ Token validation error:', error);
+      res.status(401).json({ 
+        success: false, 
+        error: 'Invalid token' 
+      });
+    }
+  }
+
+  // 👤 GET PROFILE - Get current user info
   static async getProfile(req, res) {
     try {
-      const result = await AuthService.getProfile(req.user.id);
-      res.json(result);
+      // req.user is set by auth middleware
+      res.json({
+        success: true,
+        user: req.user
+      });
     } catch (error) {
-      console.log("❌ Get profile error:", error.message);
-      res.status(404).json({ error: error.message });
-    }
-  }
-
-  // Verify token
-  static async verifyToken(req, res) {
-    try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({ error: 'No token provided' });
-      }
-
-      const decoded = AuthService.verifyToken(token);
-      res.json({ valid: true, userId: decoded.userId });
-    } catch (error) {
-      console.log("❌ Token verification error:", error.message);
-      res.status(401).json({ error: 'Invalid token' });
+      console.error('❌ Get profile error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get profile' 
+      });
     }
   }
 }

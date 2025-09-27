@@ -1,29 +1,29 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
+import { useAuth } from '../../context/AuthContext'
+import API_BASE_URL from '../../config/api'
 
 export default function AdminDashboard() {
-  const [user, setUser] = useState(null)
+  const { user, getAuthHeaders, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [employees, setEmployees] = useState([])
   const [customers, setCustomers] = useState([])
   const [camps, setCamps] = useState([])
+  const [cards, setCards] = useState([])
+  const [claims, setClaims] = useState([])
   const [error, setError] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [upcomingPage, setUpcomingPage] = useState(1)
+  const [upcomingPageSize] = useState(5)
   const navigate = useNavigate()
 
   const fetchEmployees = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/employees', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      const response = await fetch(`${API_BASE_URL}/api/users/employees`, { headers: getAuthHeaders() })
       const data = await response.json()
-      if (response.ok) {
-        setEmployees(data.employees || [])
-      } else {
-        setError(data.error || 'Failed to fetch employees')
-      }
+      const list = Array.isArray(data) ? data : (data.users || data.employees || [])
+      setEmployees(list)
     } catch (error) {
       setError('Failed to fetch employees')
     }
@@ -31,16 +31,10 @@ export default function AdminDashboard() {
 
   const fetchCustomers = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/customers', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      const response = await fetch(`${API_BASE_URL}/api/customers`, { headers: getAuthHeaders() })
       const data = await response.json()
-      if (response.ok) {
-        setCustomers(data.customers || [])
-      } else {
-        setError(data.error || 'Failed to fetch customers')
-      }
+      const list = Array.isArray(data) ? data : (data.customers || [])
+      setCustomers(list)
     } catch (error) {
       setError('Failed to fetch customers')
     }
@@ -48,52 +42,44 @@ export default function AdminDashboard() {
 
   const fetchCamps = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/camps', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      const response = await fetch(`${API_BASE_URL}/api/camps`, { headers: getAuthHeaders() })
       const data = await response.json()
-      if (response.ok) {
-        setCamps(data.camps || [])
-      } else {
-        setError(data.error || 'Failed to fetch camps')
-      }
+      const list = Array.isArray(data) ? data : (data.camps || [])
+      setCamps(list)
     } catch (error) {
       setError('Failed to fetch camps')
     }
   }
 
+  const fetchCards = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/cards`, { headers: getAuthHeaders() })
+      const data = await response.json()
+      const fromData = data && (data.cards || data.data || data.list || data)
+      const list = Array.isArray(fromData) ? fromData : (fromData ? [fromData] : [])
+      setCards(list)
+    } catch (error) {
+      setError('Failed to fetch cards')
+    }
+  }
+
+  const fetchClaims = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/claims`, { headers: getAuthHeaders() })
+      const data = await response.json()
+      const list = Array.isArray(data) ? data : (data.claims || [])
+      setClaims(list)
+    } catch (error) {
+      setError('Failed to fetch claims')
+    }
+  }
+
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      navigate('/')
-      return
-    }
-
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/profile', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        const data = await response.json()
-        
-        if (response.ok && data.user && data.user.role === 'admin') {
-          setUser(data.user)
-          fetchEmployees()
-          fetchCustomers()
-          fetchCamps()
-        } else {
-          navigate('/employee')
-        }
-      } catch (error) {
-        navigate('/')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchUser()
-  }, [navigate])
+    if (!user) { setLoading(false); return }
+    if (user.role !== 'admin') { navigate('/employee', { replace: true }); return }
+    Promise.all([fetchEmployees(), fetchCustomers(), fetchCamps(), fetchCards(), fetchClaims()])
+      .finally(() => setLoading(false))
+  }, [user, navigate])
 
   if (loading) {
     return (
@@ -106,22 +92,38 @@ export default function AdminDashboard() {
     )
   }
 
-  const activeEmployees = employees.filter(emp => emp.role === 'employee')
+  const employeesCount = employees.length
+  const employeesActive = employees.filter(emp => emp.role === 'employee').length
   const totalCustomers = customers.length
-  const completedCamps = camps.filter(camp => camp.status === 'completed')
-  const ongoingCamps = camps.filter(camp => camp.status === 'ongoing')
-  const plannedCamps = camps.filter(camp => camp.status === 'planned')
-  const totalRevenue = customers.reduce((sum, cust) => sum + (parseFloat(cust.discussed_amount) || 0), 0)
-
-  const handleLogout = () => {
-    // Clear authentication data
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('authState')
-    
-    // Force redirect to login page
-    window.location.href = '/login'
+  const totalCards = cards.length
+  const totalClaims = claims.length
+  const toNumber = (v) => {
+    const n = parseFloat(v)
+    return Number.isFinite(n) ? n : 0
   }
+  const totalRevenue = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
+  const totalDiscussed = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
+  const pendingCustomerPayments = customers.reduce((sum, c) => sum + toNumber(c.pending_amount), 0)
+  const pendingClaimsAmount = claims.filter(cl => (cl.status || '').toLowerCase() === 'pending').reduce((s, cl) => s + toNumber(cl.amount), 0)
+  const completedCamps = camps.filter(c => (c.status || '').toLowerCase() === 'completed')
+  const plannedCamps = camps.filter(c => (c.status || '').toLowerCase() === 'planned')
+  const ongoingCamps = camps.filter(c => (c.status || '').toLowerCase() === 'ongoing')
+  const pendingCampsCount = plannedCamps.length + ongoingCamps.length
+
+  const byDateDesc = (a, b) => new Date(b.camp_date) - new Date(a.camp_date)
+  const byDateAsc = (a, b) => new Date(a.camp_date) - new Date(b.camp_date)
+  const recentCamps = [...camps].sort(byDateDesc).slice(0, 4)
+  const today = new Date(); today.setHours(0,0,0,0)
+  const upcoming = camps.filter(c => { const d = new Date(c.camp_date); d.setHours(0,0,0,0); return d >= today }).sort(byDateAsc)
+  const totalUpcomingPages = Math.max(1, Math.ceil(upcoming.length / upcomingPageSize))
+  const currentUpcomingPage = Math.min(upcomingPage, totalUpcomingPages)
+  const upcomingSlice = upcoming.slice((currentUpcomingPage - 1) * upcomingPageSize, currentUpcomingPage * upcomingPageSize)
+
+  const sortByCreatedDesc = (list) => [...list].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  const recentEmployees = sortByCreatedDesc(employees).slice(0, 10)
+  const recentCustomers = sortByCreatedDesc(customers).slice(0, 10)
+
+  const handleLogout = () => logout()
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
@@ -159,66 +161,131 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 border-l-4 border-blue-500`}>
-                <div className="flex items-center">
-                  <div className="p-3 rounded-lg bg-blue-100">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                    </svg>
+            {/* KPI Tiles */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+              {[
+                { label: 'Employees', value: `${employeesActive} / ${employeesCount}`, border: 'border-blue-500', iconBg: 'bg-blue-100', iconText: 'text-blue-600' },
+                { label: 'Customers', value: totalCustomers.toLocaleString(), border: 'border-emerald-500', iconBg: 'bg-emerald-100', iconText: 'text-emerald-600' },
+                { label: 'Cards', value: totalCards.toLocaleString(), border: 'border-violet-500', iconBg: 'bg-violet-100', iconText: 'text-violet-600' },
+                { label: 'Claims', value: totalClaims.toLocaleString(), border: 'border-pink-500', iconBg: 'bg-pink-100', iconText: 'text-pink-600' },
+                { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, border: 'border-yellow-500', iconBg: 'bg-yellow-100', iconText: 'text-yellow-600' },
+                { label: 'Pending Cust. Payments', value: `₹${pendingCustomerPayments.toLocaleString()}`, border: 'border-orange-500', iconBg: 'bg-orange-100', iconText: 'text-orange-600' },
+                { label: 'Pending Claims Amount', value: `₹${pendingClaimsAmount.toLocaleString()}`, border: 'border-red-500', iconBg: 'bg-red-100', iconText: 'text-red-600' },
+                { label: 'Discussed Amount', value: `₹${totalDiscussed.toLocaleString()}`, border: 'border-amber-500', iconBg: 'bg-amber-100', iconText: 'text-amber-600' },
+                { label: 'Pending Camps', value: pendingCampsCount.toLocaleString(), border: 'border-cyan-500', iconBg: 'bg-cyan-100', iconText: 'text-cyan-600' },
+                { label: 'Completed Camps', value: completedCamps.length.toLocaleString(), border: 'border-slate-500', iconBg: 'bg-slate-100', iconText: 'text-slate-600' }
+              ].map((kpi, idx) => (
+                <div key={idx} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 border-l-4 ${kpi.border}`}>
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-lg ${kpi.iconBg}`}>
+                      <svg className={`w-6 h-6 ${kpi.iconText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{kpi.label}</p>
+                      <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{kpi.value}</p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Active Employees</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activeEmployees.length}</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Out of {employees.length} total</p>
-                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Camps Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Recent Camps</h2>
+                </div>
+                <div className="space-y-3">
+                  {recentCamps.map((camp) => (
+                    <div key={camp.id} className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 flex items-center justify-between`}>
+                      <div>
+                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{camp.location}</p>
+                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{new Date(camp.camp_date).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        (camp.status || '').toLowerCase() === 'completed' ? 'bg-gray-100 text-gray-800' :
+                        (camp.status || '').toLowerCase() === 'ongoing' ? 'bg-green-100 text-green-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {(camp.status || '').charAt(0).toUpperCase() + (camp.status || '').slice(1)}
+                      </span>
+                    </div>
+                  ))}
+                  {recentCamps.length === 0 && (
+                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>No recent camps.</p>
+                  )}
                 </div>
               </div>
 
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 border-l-4 border-green-500`}>
-                <div className="flex items-center">
-                  <div className="p-3 rounded-lg bg-green-100">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Upcoming Camps</h2>
+                  <div className="space-x-2">
+                    <button onClick={() => setUpcomingPage(p => Math.max(1, p - 1))} className={`${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'} px-3 py-1 rounded disabled:opacity-50`} disabled={currentUpcomingPage === 1}>Prev</button>
+                    <button onClick={() => setUpcomingPage(p => Math.min(totalUpcomingPages, p + 1))} className={`${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'} px-3 py-1 rounded disabled:opacity-50`} disabled={currentUpcomingPage === totalUpcomingPages}>Next</button>
                   </div>
-                  <div className="ml-4">
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Customers</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{totalCustomers}</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>All customers</p>
-                  </div>
+                </div>
+                <div className="space-y-3">
+                  {upcomingSlice.map((camp) => (
+                    <div key={camp.id} className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 flex items-center justify-between`}>
+                      <div>
+                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{camp.location}</p>
+                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{new Date(camp.camp_date).toLocaleDateString()}</p>
+                      </div>
+                      <a href={`https://maps.google.com/?q=${encodeURIComponent(camp.location)}`} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">Map</a>
+                    </div>
+                  ))}
+                  {upcomingSlice.length === 0 && (
+                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>No upcoming camps.</p>
+                  )}
+                </div>
+                <div className={`mt-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Page {currentUpcomingPage} of {totalUpcomingPages}</div>
+              </div>
+            </div>
+
+            {/* Recent joins */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Recent Employees</h2>
+                  <button onClick={() => navigate('/admin/employees')} className="text-sm text-blue-600 hover:underline">View more</button>
+                </div>
+                <div className="space-y-3">
+                  {recentEmployees.map(emp => (
+                    <div key={emp.id} className="flex items-center justify-between">
+                      <div>
+                        <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium`}>{emp.name}</p>
+                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{emp.email}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${emp.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>{emp.role}</span>
+                    </div>
+                  ))}
+                  {recentEmployees.length === 0 && (
+                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>No employees found.</p>
+                  )}
                 </div>
               </div>
 
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 border-l-4 border-yellow-500`}>
-                <div className="flex items-center">
-                  <div className="p-3 rounded-lg bg-yellow-100">
-                    <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Revenue</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{totalRevenue.toLocaleString()}</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>From all customers</p>
-                  </div>
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Recent Customers</h2>
+                  <button onClick={() => navigate('/admin/customers')} className="text-sm text-blue-600 hover:underline">View more</button>
                 </div>
-              </div>
-
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 border-l-4 border-purple-500`}>
-                <div className="flex items-center">
-                  <div className="p-3 rounded-lg bg-purple-100">
-                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Camps</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{camps.length}</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>{completedCamps.length} completed</p>
-                  </div>
+                <div className="space-y-3">
+                  {recentCustomers.map(cust => (
+                    <div key={cust.id} className="flex items-center justify-between">
+                      <div>
+                        <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium`}>{cust.customer_name}</p>
+                        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{cust.email || cust.phone_number}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>ID {cust.id}</span>
+                    </div>
+                  ))}
+                  {recentCustomers.length === 0 && (
+                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>No customers found.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -276,44 +343,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
-                <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-4`}>Recent Customers</h3>
-                <div className="space-y-3">
-                  {customers.slice(0, 4).map((customer) => (
-                    <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{customer.customer_name}</p>
-                        <p className="text-sm text-gray-500">{customer.type_of_work}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">₹{parseFloat(customer.discussed_amount || 0).toLocaleString()}</p>
-                        <p className="text-sm text-gray-500">{customer.created_by_name || 'Unknown'}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
-                <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'} mb-4`}>Upcoming Camps</h3>
-                <div className="space-y-3">
-                  {plannedCamps.slice(0, 4).map((camp) => (
-                    <div key={camp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{camp.location}</p>
-                        <p className="text-sm text-gray-500">{camp.conducted_by}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">{new Date(camp.camp_date).toLocaleDateString()}</p>
-                        <p className="text-sm text-gray-500">{camp.assigned_employee_names?.length || 0} assigned</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            
           </div>
         </main>
       </div>

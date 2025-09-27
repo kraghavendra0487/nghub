@@ -46,7 +46,7 @@ export default function AdminSidebar({ user, isDarkMode, setIsDarkMode, onLogout
     }
   ]
 
-  const handleLogout = () => {
+  const logout = () => {
     if (onLogout) {
       onLogout()
     } else {
@@ -160,7 +160,7 @@ export default function AdminSidebar({ user, isDarkMode, setIsDarkMode, onLogout
               )}
             </button>
             <button
-              onClick={handleLogout}
+              onClick={logout}
               className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isDarkMode ? 'text-red-400 hover:bg-red-900' : 'text-red-600 hover:bg-red-50'}`}
             >
               Logout

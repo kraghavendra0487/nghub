@@ -1,17 +1,40 @@
-import React, { useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const NotFound = () => {
-  const { handleLogout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
-    // Automatically logout and redirect to login after showing the error
-    const timer = setTimeout(() => {
-      handleLogout();
+    // Start countdown
+    const countdownTimer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownTimer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Redirect after 3 seconds
+    const redirectTimer = setTimeout(() => {
+      if (isAuthenticated) {
+        // If user is authenticated, log them out first
+        logout();
+      } else {
+        // If not authenticated, just redirect to login
+        navigate('/login', { replace: true });
+      }
     }, 3000);
 
-    return () => clearTimeout(timer);
-  }, [handleLogout]);
+    return () => {
+      clearInterval(countdownTimer);
+      clearTimeout(redirectTimer);
+    };
+  }, [logout, isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center">
@@ -25,8 +48,20 @@ const NotFound = () => {
           </p>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="text-sm text-gray-500">
-            Redirecting to login in 3 seconds...
+            Redirecting to login in {countdown} seconds...
           </p>
+          <button
+            onClick={() => {
+              if (isAuthenticated) {
+                logout();
+              } else {
+                navigate('/login', { replace: true });
+              }
+            }}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md text-sm font-medium transition-colors"
+          >
+            Go to Login Now
+          </button>
         </div>
       </div>
     </div>

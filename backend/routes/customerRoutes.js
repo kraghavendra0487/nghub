@@ -1,21 +1,18 @@
 const express = require('express');
-const { protect, authorize } = require('../middleware/authMiddleware');
 const CustomerController = require('../controllers/customerController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// All routes are protected
-router.use(protect);
+// Read operations available to authenticated users
+router.get('/', protect, authorize('admin', 'employee'), CustomerController.getAllCustomers);
+router.get('/search', protect, authorize('admin', 'employee'), CustomerController.searchCustomers);
+router.get('/employee/:employeeId', protect, authorize('admin', 'employee'), CustomerController.getCustomersByEmployeeId);
+router.get('/:id', protect, authorize('admin', 'employee'), CustomerController.getCustomerById);
 
-// Admin routes
-router.get('/', authorize('admin'), CustomerController.getAllCustomers);
-router.get('/search', authorize('admin'), CustomerController.searchCustomers);
-router.post('/', authorize('admin'), CustomerController.createCustomer);
-router.get('/:id', authorize('admin'), CustomerController.getCustomerById);
-router.put('/:id', authorize('admin'), CustomerController.updateCustomer);
-router.delete('/:id', authorize('admin'), CustomerController.deleteCustomer);
-
-// Employee routes
-router.get('/employee/:employeeId', authorize('employee'), CustomerController.getCustomersByEmployeeId);
+// Write operations restricted to admins
+router.post('/', protect, authorize('admin'), CustomerController.createCustomer);
+router.put('/:id', protect, authorize('admin'), CustomerController.updateCustomer);
+router.delete('/:id', protect, authorize('admin'), CustomerController.deleteCustomer);
 
 module.exports = router;

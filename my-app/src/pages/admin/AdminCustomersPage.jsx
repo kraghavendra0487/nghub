@@ -4,9 +4,11 @@ import AdminSidebar from '../../components/AdminSidebar'
 import UserCard from '../../components/employee/UserCard'
 import ClaimsTable from '../../components/employee/ClaimsTable'
 import WhiteCardPopup from '../../components/WhiteCardPopup'
+import { useAuth } from '../../context/AuthContext'
+import API_BASE_URL from '../../config/api'
 
 export default function CustomerManagement() {
-  const [user, setUser] = useState(null)
+  const { user, getAuthHeaders, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [customers, setCustomers] = useState([])
@@ -55,53 +57,25 @@ export default function CustomerManagement() {
   })
 
   useEffect(() => {
-    const authenticateUser = async () => {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        navigate('/')
-        return
-      }
-
-      try {
-        const response = await fetch('/api/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await response.json()
-        
-        if (data.user && data.user.role === 'admin') {
-          setUser(data.user)
-          await Promise.all([fetchCustomers(), fetchEmployees()])
-        } else {
-          navigate('/employee')
-        }
-      } catch (error) {
-        console.error('Authentication error:', error)
-        localStorage.removeItem('token')
-        navigate('/')
-      } finally {
-        setLoading(false)
-      }
+    if (!user) {
+      return
     }
-
-    authenticateUser()
-  }, [navigate])
+    if (user.role !== 'admin') {
+      navigate('/employee', { replace: true })
+      return
+    }
+    Promise.all([fetchCustomers(), fetchEmployees()]).finally(() => setLoading(false))
+  }, [user, navigate])
 
   const fetchCustomers = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/customers', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
+        headers: getAuthHeaders()
       })
 
       const data = await response.json()
-      if (data.customers) {
-        setCustomers(data.customers)
-      }
+      const customers = Array.isArray(data) ? data : (data.customers || [])
+      setCustomers(customers)
     } catch (error) {
       console.error('Error fetching customers:', error)
       setError('Failed to fetch customers')
@@ -110,17 +84,13 @@ export default function CustomerManagement() {
 
   const fetchEmployees = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/employees', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/users/employees`, {
+        headers: getAuthHeaders()
       })
 
       const data = await response.json()
-      if (data.employees) {
-        setEmployees(data.employees)
-      }
+      const employees = Array.isArray(data) ? data : (data.users || data.employees || [])
+      setEmployees(employees)
     } catch (error) {
       console.error('Error fetching employees:', error)
     }
@@ -151,12 +121,9 @@ export default function CustomerManagement() {
     if (!confirm('Are you sure you want to delete this customer?')) return
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/customers/${customerId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: getAuthHeaders()
       })
 
       if (response.ok) {
@@ -177,13 +144,9 @@ export default function CustomerManagement() {
   const handleAddCustomer = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/customers', {
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(newCustomer)
       })
 
@@ -218,13 +181,9 @@ export default function CustomerManagement() {
   const handleUpdateCustomer = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(editCustomer)
       })
 
@@ -273,13 +232,12 @@ export default function CustomerManagement() {
   // Card and Claims handlers
   const fetchCustomerCards = async (customerId) => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/customers/${customerId}/card`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`${API_BASE_URL}/api/cards/customer/${customerId}`, {
+        headers: getAuthHeaders()
       })
       const data = await response.json()
       if (response.ok) {
-        const cards = data.cards || []
+        const cards = Array.isArray(data) ? data : (data.cards || [])
         setCustomerCards(cards)
         return cards
       }
@@ -292,13 +250,12 @@ export default function CustomerManagement() {
 
   const fetchClaims = async (cardId) => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/cards/${cardId}/claims`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`${API_BASE_URL}/api/claims/card/${cardId}`, {
+        headers: getAuthHeaders()
       })
       const data = await response.json()
       if (response.ok) {
-        const claims = data.claims || []
+        const claims = Array.isArray(data) ? data : (data.claims || [])
         setClaims(claims)
         return claims
       }
@@ -347,15 +304,7 @@ export default function CustomerManagement() {
     return null
   }
 
-  const handleLogout = () => {
-    // Clear authentication data
-                localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('authState')
-    
-    // Force redirect to login page
-    window.location.href = '/login'
-  }
+  const handleLogout = () => logout()
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>

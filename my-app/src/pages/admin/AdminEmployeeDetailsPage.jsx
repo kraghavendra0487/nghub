@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
+import { useAuth } from '../../context/AuthContext'
+import API_BASE_URL from '../../config/api'
 
 export default function EmployeeDetailsPage() {
-  const [user, setUser] = useState(null)
+  const { user, getAuthHeaders, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [employee, setEmployee] = useState(null)
@@ -13,52 +15,28 @@ export default function EmployeeDetailsPage() {
   const { id } = useParams()
 
   useEffect(() => {
-    const authenticateUser = async () => {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        navigate('/')
-        return
-      }
-
-      try {
-        const response = await fetch('/api/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await response.json()
-        
-        if (data.user && data.user.role === 'admin') {
-          setUser(data.user)
-          await Promise.all([fetchEmployee(), fetchEmployeeCustomers()])
-        } else {
-          navigate('/employee')
-        }
-      } catch (error) {
-        console.error('Authentication error:', error)
-        localStorage.removeItem('token')
-        navigate('/')
-      } finally {
-        setLoading(false)
-      }
+    if (!user) {
+      setLoading(false)
+      navigate('/login', { replace: true })
+      return
     }
-
-    authenticateUser()
-  }, [navigate, id])
+    if (user.role !== 'admin') {
+      navigate('/employee', { replace: true })
+      return
+    }
+    Promise.all([fetchEmployee(), fetchEmployeeCustomers()])
+      .finally(() => setLoading(false))
+  }, [user, navigate, id])
 
   const fetchEmployee = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/employees/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+        headers: getAuthHeaders()
       })
 
       const data = await response.json()
-      if (data.employee) {
-        setEmployee(data.employee)
+      if (data.user || data.employee) {
+        setEmployee(data.user || data.employee)
       } else {
         setError('Employee not found')
         setTimeout(() => navigate('/admin/employees'), 2000)
@@ -72,17 +50,12 @@ export default function EmployeeDetailsPage() {
 
   const fetchEmployeeCustomers = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/employees/${id}/customers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/customers/employee/${id}`, {
+        headers: getAuthHeaders()
       })
 
       const data = await response.json()
-      if (data.customers) {
-        setEmployeeCustomers(data.customers)
-      }
+      setEmployeeCustomers(data.customers || data || [])
     } catch (error) {
       console.error('Error fetching employee customers:', error)
     }
@@ -103,15 +76,7 @@ export default function EmployeeDetailsPage() {
     return null
   }
 
-  const handleLogout = () => {
-    // Clear authentication data
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('authState')
-    
-    // Force redirect to login page
-    window.location.href = '/login'
-  }
+  const handleLogout = () => logout()
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>

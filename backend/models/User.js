@@ -1,10 +1,11 @@
 const pool = require('../config/database');
+const bcrypt = require('bcryptjs');
 
 class User {
   // Get user by email
   static async findByEmail(email) {
     try {
-      const query = 'SELECT * FROM users WHERE email = $1';
+      const query = 'SELECT id, employee_id, name, email, contact, role, password FROM users WHERE email = $1';
       const result = await pool.query(query, [email]);
       return result.rows[0] || null;
     } catch (error) {
@@ -29,12 +30,17 @@ class User {
   static async create(userData) {
     try {
       const { employee_id, name, email, contact, password, role } = userData;
+      
+      // Hash password before storing
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      
       const query = `
-        INSERT INTO users (employee_id, name, email, contact, password, role)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, employee_id, name, email, contact, role
+        INSERT INTO users (employee_id, name, email, contact, password, role, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        RETURNING id, employee_id, name, email, contact, role, created_at
       `;
-      const values = [employee_id, name, email, contact, password, role];
+      const values = [employee_id, name, email, contact, hashedPassword, role];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {

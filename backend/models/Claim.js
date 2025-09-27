@@ -5,7 +5,7 @@ class Claim {
   static async findAll() {
     try {
       const query = `
-        SELECT cl.*, c.card_number, cu.name as customer_name, cu.email as customer_email
+        SELECT cl.*, c.card_number, cu.customer_name, cu.phone_number as customer_phone
         FROM claims cl
         LEFT JOIN cards c ON cl.card_id = c.id
         LEFT JOIN customers cu ON c.customer_id = cu.id
@@ -23,7 +23,7 @@ class Claim {
   static async findById(id) {
     try {
       const query = `
-        SELECT cl.*, c.card_number, cu.name as customer_name, cu.email as customer_email
+        SELECT cl.*, c.card_number, cu.customer_name, cu.phone_number as customer_phone
         FROM claims cl
         LEFT JOIN cards c ON cl.card_id = c.id
         LEFT JOIN customers cu ON c.customer_id = cu.id
@@ -41,7 +41,7 @@ class Claim {
   static async findByCardId(cardId) {
     try {
       const query = `
-        SELECT cl.*, c.card_number, cu.name as customer_name, cu.email as customer_email
+        SELECT cl.*, c.card_number, cu.customer_name, cu.phone_number as customer_phone
         FROM claims cl
         LEFT JOIN cards c ON cl.card_id = c.id
         LEFT JOIN customers cu ON c.customer_id = cu.id
@@ -60,7 +60,7 @@ class Claim {
   static async findByCustomerId(customerId) {
     try {
       const query = `
-        SELECT cl.*, c.card_number, cu.name as customer_name, cu.email as customer_email
+        SELECT cl.*, c.card_number, cu.customer_name, cu.phone_number as customer_phone
         FROM claims cl
         LEFT JOIN cards c ON cl.card_id = c.id
         LEFT JOIN customers cu ON c.customer_id = cu.id
@@ -79,11 +79,11 @@ class Claim {
   static async findByEmployeeId(employeeId) {
     try {
       const query = `
-        SELECT cl.*, c.card_number, cu.name as customer_name, cu.email as customer_email
+        SELECT cl.*, c.card_number, cu.customer_name, cu.phone_number as customer_phone
         FROM claims cl
         LEFT JOIN cards c ON cl.card_id = c.id
         LEFT JOIN customers cu ON c.customer_id = cu.id
-        WHERE cu.employee_id = $1
+        WHERE cu.created_by = $1
         ORDER BY cl.created_at DESC
       `;
       const result = await pool.query(query, [employeeId]);
@@ -97,13 +97,13 @@ class Claim {
   // Create new claim
   static async create(claimData) {
     try {
-      const { card_id, amount, description, claim_type, status } = claimData;
+      const { card_id, discussed_amount, paid_amount, pending_amount, type_of_claim, process_state, created_by } = claimData;
       const query = `
-        INSERT INTO claims (card_id, amount, description, claim_type, status)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO claims (card_id, discussed_amount, paid_amount, pending_amount, type_of_claim, process_state, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `;
-      const values = [card_id, amount, description, claim_type, status];
+      const values = [card_id, discussed_amount, paid_amount, pending_amount, type_of_claim, process_state, created_by];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -115,14 +115,14 @@ class Claim {
   // Update claim
   static async update(id, claimData) {
     try {
-      const { amount, description, claim_type, status } = claimData;
+      const { discussed_amount, paid_amount, pending_amount, type_of_claim, process_state } = claimData;
       const query = `
         UPDATE claims 
-        SET amount = $1, description = $2, claim_type = $3, status = $4, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $5
+        SET discussed_amount = $1, paid_amount = $2, pending_amount = $3, type_of_claim = $4, process_state = $5, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6
         RETURNING *
       `;
-      const values = [amount, description, claim_type, status, id];
+      const values = [discussed_amount, paid_amount, pending_amount, type_of_claim, process_state, id];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -147,11 +147,11 @@ class Claim {
   static async findByStatus(status) {
     try {
       const query = `
-        SELECT cl.*, c.card_number, cu.name as customer_name, cu.email as customer_email
+        SELECT cl.*, c.card_number, cu.customer_name, cu.phone_number as customer_phone
         FROM claims cl
         LEFT JOIN cards c ON cl.card_id = c.id
         LEFT JOIN customers cu ON c.customer_id = cu.id
-        WHERE cl.status = $1
+        WHERE cl.process_state = $1
         ORDER BY cl.created_at DESC
       `;
       const result = await pool.query(query, [status]);

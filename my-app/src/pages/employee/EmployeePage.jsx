@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../context/AuthContext'
 import EmployeeSidebar from '../../components/EmployeeSidebar'
 import EditCustomerForm from '../../components/employee/EditCustomerForm'
 import CardForm from '../../components/employee/CardForm'
@@ -11,7 +11,7 @@ import UserCard from '../../components/employee/UserCard'
 import WhiteCardPopup from '../../components/WhiteCardPopup'
 
 export default function EmployeeDashboard() {
-  const { user, handleLogout } = useAuth()
+  const { user, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [customers, setCustomers] = useState([])
   const [customerCount, setCustomerCount] = useState(0)
@@ -131,7 +131,7 @@ export default function EmployeeDashboard() {
           user={user} 
           isDarkMode={isDarkMode} 
           setIsDarkMode={setIsDarkMode}
-          onLogout={handleLogout}
+          onLogout={logout}
         />
 
         {/* Main Content Area */}

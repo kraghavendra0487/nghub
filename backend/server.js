@@ -8,7 +8,18 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.FRONTEND_ORIGIN
+    ].filter(Boolean);
+    if (!origin || allowed.includes(origin)) return callback(null, true);
+    return callback(null, true); // fallback allow for local mixed origins
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Serve static files from React build
@@ -22,13 +33,20 @@ app.use((req, res, next) => {
 });
 
 // Import routes
-const routes = require('./routes');
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const customerRoutes = require('./routes/customerRoutes');
+const campRoutes = require('./routes/campRoutes');
+const cardRoutes = require('./routes/cardRoutes');
+const claimRoutes = require('./routes/claimRoutes');
 
 // Use routes
-app.use('/api', routes);
-
-// Legacy login endpoint for backward compatibility
-app.post('/api/login', require('./controllers/authController').login);
+app.use('/api/auth', authRoutes);           // 🔑 New auth routes
+app.use('/api/users', userRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/camps', campRoutes);
+app.use('/api/cards', cardRoutes);
+app.use('/api/claims', claimRoutes);
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {

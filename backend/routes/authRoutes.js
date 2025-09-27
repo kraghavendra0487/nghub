@@ -1,15 +1,21 @@
 const express = require('express');
-const { protect } = require('../middleware/authMiddleware');
 const AuthController = require('../controllers/authController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Public routes
+// 🔓 PUBLIC ROUTES
 router.post('/login', AuthController.login);
-router.post('/register', AuthController.register);
-router.get('/verify', AuthController.verifyToken);
 
-// Protected routes
+// 🔒 PROTECTED ROUTES (require valid JWT)
+router.post('/logout', protect, AuthController.logout);
+router.get('/validate-token', protect, AuthController.validateToken);
 router.get('/profile', protect, AuthController.getProfile);
+
+// 🔐 ADMIN-ONLY ROUTES (require admin role)
+// Example: router.get('/admin/users', protect, authorize('admin'), SomeController.getUsers);
+
+// 👨‍💼 EMPLOYEE ROUTES (require employee role)
+// Example: router.get('/employee/profile', protect, authorize('employee'), SomeController.getProfile);
 
 module.exports = router;

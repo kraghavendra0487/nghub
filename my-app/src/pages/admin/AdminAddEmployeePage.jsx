@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../context/AuthContext'
 import AdminSidebar from '../../components/AdminSidebar'
+import API_BASE_URL from '../../config/api'
 
 export default function AddEmployee() {
-  const { user, handleLogout } = useAuth()
+  const { user, logout, getAuthHeaders } = useAuth()
   const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -22,40 +23,17 @@ export default function AddEmployee() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const authenticateUser = async () => {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        navigate('/')
-        return
-      }
-
-      try {
-        // Verify token with backend
-        const response = await fetch('/api/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await response.json()
-        
-        if (data.user && data.user.role === 'admin') {
-          // User is already set by AuthContext
-        } else {
-          // Not admin, redirect to employee dashboard
-          navigate('/employee')
-        }
-      } catch (error) {
-        console.error('Authentication error:', error)
-        localStorage.removeItem('token')
-        navigate('/')
-      } finally {
-        setLoading(false)
-      }
+    // Wait for AuthContext; redirect only if role mismatch
+    if (!user) {
+      setLoading(false)
+      return
     }
-
-    authenticateUser()
-  }, [navigate])
+    if (user.role !== 'admin') {
+      navigate('/employee', { replace: true })
+      return
+    }
+    setLoading(false)
+  }, [user, navigate])
 
   const handleChange = (e) => {
     setFormData({
@@ -91,13 +69,9 @@ export default function AddEmployee() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/admin/register', {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           employee_id: formData.employee_id,
           name: formData.name,
@@ -160,7 +134,7 @@ export default function AddEmployee() {
           user={user} 
           isDarkMode={isDarkMode} 
           setIsDarkMode={setIsDarkMode}
-          onLogout={handleLogout}
+          onLogout={logout}
         />
 
         {/* Main Content Area */}

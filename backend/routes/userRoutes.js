@@ -1,18 +1,22 @@
 const express = require('express');
-const { protect, authorize } = require('../middleware/authMiddleware');
 const UserController = require('../controllers/userController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// All routes are protected
-router.use(protect);
+// Public routes (legacy - prefer /api/auth)
+router.post('/login', UserController.loginUser);
 
-// Admin only routes
-router.get('/', authorize('admin'), UserController.getAllUsers);
-router.get('/employees', authorize('admin'), UserController.getEmployees);
-router.post('/', authorize('admin'), UserController.createUser);
-router.get('/:id', authorize('admin'), UserController.getUserById);
-router.put('/:id', authorize('admin'), UserController.updateUser);
-router.delete('/:id', authorize('admin'), UserController.deleteUser);
+// Protected session helpers
+router.get('/validate-token', protect, UserController.validateToken);
+router.post('/logout', protect, UserController.logoutUser);
+
+// Secure user management with role checks
+router.get('/', protect, authorize('admin'), UserController.getAllUsers);
+router.get('/employees', protect, authorize('admin'), UserController.getEmployees);
+router.post('/', protect, authorize('admin'), UserController.createUser);
+router.get('/:id', protect, authorize('admin'), UserController.getUserById);
+router.put('/:id', protect, authorize('admin'), UserController.updateUser);
+router.delete('/:id', protect, authorize('admin'), UserController.deleteUser);
 
 module.exports = router;

@@ -1,7 +1,7 @@
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 export const useApiErrorHandler = () => {
-  const { handleLogout } = useAuth();
+  const { logout } = useAuth();
 
   const handleError = (error) => {
     console.error('API Error:', error);
@@ -9,7 +9,7 @@ export const useApiErrorHandler = () => {
     // Check if it's an authorization error
     if (error?.status === 401 || error?.status === 403) {
       console.log('Authorization error detected, logging out user');
-      handleLogout();
+      logout();
     }
     
     // Return the error for further handling if needed
