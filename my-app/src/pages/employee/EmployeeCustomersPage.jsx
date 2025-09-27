@@ -1,192 +1,329 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
+import { useNavigate, useLocation } from 'react-router-dom'
 import EmployeeSidebar from '../../components/EmployeeSidebar'
-import EditCustomerForm from '../../components/employee/EditCustomerForm'
-import CardForm from '../../components/employee/CardForm'
 import UserCard from '../../components/employee/UserCard'
 import ClaimsTable from '../../components/employee/ClaimsTable'
-import WhiteCardPopup from '../../components/WhiteCardPopup'
+import { useAuth } from '../../context/AuthContext'
+import API_BASE_URL from '../../config/api'
 
-export default function CustomersPage() {
-  const { user, logout } = useAuth()
+export default function EmployeeCustomersPage() {
+  const { user, getAuthHeaders, logout } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const [customers, setCustomers] = useState([])
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [showCustomerDetails, setShowCustomerDetails] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [showCardForm, setShowCardForm] = useState(false)
-  const [showCardModal, setShowCardModal] = useState(false)
-  const [showClaimsModal, setShowClaimsModal] = useState(false)
-  const [isAddingClaim, setIsAddingClaim] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null)
-  const [selectedCustomerName, setSelectedCustomerName] = useState('')
-  const [selectedCard, setSelectedCard] = useState(null)
-  const [claims, setClaims] = useState([])
-  const [customerCards, setCustomerCards] = useState({})
-  const [showEditCustomerModal, setShowEditCustomerModal] = useState(false)
-  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false)
-  const [editingCustomer, setEditingCustomer] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [filterWorkType, setFilterWorkType] = useState('all')
+  const [showClaimsModal, setShowClaimsModal] = useState(false)
+  const [selectedCard, setSelectedCard] = useState(null)
+  const [selectedCustomerForView, setSelectedCustomerForView] = useState(null)
+  const [claims, setClaims] = useState([])
+  const [customerCardMap, setCustomerCardMap] = useState({})
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Add Customer Form State
+  const [newCustomer, setNewCustomer] = useState({
+    customer_name: '',
+    phone_number: '',
+    type_of_work: '',
+    discussed_amount: '',
+    paid_amount: '',
+    pending_amount: '',
+    mode_of_payment: '',
+    created_by: user?.id ? String(user.id) : ''
+  })
+
+  // Edit Customer Form State
+  const [editCustomer, setEditCustomer] = useState({
+    customer_name: '',
+    phone_number: '',
+    type_of_work: '',
+    discussed_amount: '',
+    paid_amount: '',
+    pending_amount: '',
+    mode_of_payment: '',
+    created_by: user?.id ? String(user.id) : ''
+  })
+
+  useEffect(() => {
+    if (!user) {
+      return
+    }
+    if (user.role !== 'employee') {
+      navigate('/admin/dashboard', { replace: true })
+      return
+    }
+    setNewCustomer((prev) => ({ ...prev, created_by: String(user.id) }))
+    setEditCustomer((prev) => ({ ...prev, created_by: String(user.id) }))
+    fetchCustomers()
+    setLoading(false)
+  }, [user, navigate])
 
   const fetchCustomers = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/customers', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE_URL}/api/customers/employee/${user.id}`, {
+        headers: getAuthHeaders()
       })
-      if (response.ok) {
-        const data = await response.json()
-        const customersData = data.customers || data || []
-        setCustomers(customersData)
-      }
+
+      const data = await response.json()
+      const customers = Array.isArray(data) ? data : (data.customers || [])
+      setCustomers(customers)
     } catch (error) {
       console.error('Error fetching customers:', error)
-      // Set empty array to prevent filter errors
-      setCustomers([])
+      setError('Failed to fetch customers')
     }
   }
 
-  const fetchCustomerCards = async () => {
+  const handleViewClaims = async (customer) => {
     try {
-      const token = localStorage.getItem('token')
-      const cardsByCustomer = {}
+      setSelectedCustomerForView(customer)
       
-      // Fetch cards for each customer individually since there's no bulk endpoint
-      for (const customer of customers) {
-        try {
-          const response = await fetch(`/api/customers/${customer.id}/card`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-          if (response.ok) {
-            const cardData = await response.json()
-            if (cardData.card) {
-              cardsByCustomer[customer.id] = cardData.card
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching card for customer ${customer.id}:`, error)
-        }
+      // Check if we already have the card cached
+      if (customerCardMap[customer.id]) {
+        setSelectedCard(customerCardMap[customer.id])
+        await fetchClaims(customerCardMap[customer.id].id)
+        setShowClaimsModal(true)
+        return
       }
-      
-      setCustomerCards(cardsByCustomer)
+
+      // Fetch card for this customer
+      const response = await fetch(`${API_BASE_URL}/api/cards/customer/${customer.id}`, {
+        headers: getAuthHeaders()
+      })
+
+      if (response.ok) {
+        const cardData = await response.json()
+        let card = null
+        
+        // Handle different API response shapes
+        if (cardData && typeof cardData === 'object') {
+          if (cardData.card) {
+            card = cardData.card
+          } else if (cardData.cards && Array.isArray(cardData.cards) && cardData.cards.length > 0) {
+            card = cardData.cards[0]
+          } else if (cardData.id) {
+            card = cardData
+          }
+        }
+
+        // Cache the card
+        setCustomerCardMap(prev => ({ ...prev, [customer.id]: card }))
+        setSelectedCard(card)
+
+        if (card) {
+          await fetchClaims(card.id)
+        } else {
+          setClaims([])
+        }
+        
+        setShowClaimsModal(true)
+      } else {
+        setSelectedCard(null)
+        setClaims([])
+        setShowClaimsModal(true)
+      }
     } catch (error) {
-      console.error('Error fetching customer cards:', error)
+      console.error('Error fetching customer card:', error)
+      setSelectedCard(null)
+      setClaims([])
+      setShowClaimsModal(true)
     }
   }
 
-  const fetchClaims = async () => {
+  const fetchClaims = async (cardId) => {
     try {
-      // Claims are fetched per card, not globally
-      // This will be handled when viewing specific customer claims
-      setClaims([])
+      const response = await fetch(`${API_BASE_URL}/api/claims/card/${cardId}`, {
+        headers: getAuthHeaders()
+      })
+
+      if (response.ok) {
+        const claimsData = await response.json()
+        let claimsList = []
+        
+        if (claimsData && typeof claimsData === 'object') {
+          if (Array.isArray(claimsData)) {
+            claimsList = claimsData
+          } else if (claimsData.claims && Array.isArray(claimsData.claims)) {
+            claimsList = claimsData.claims
+          } else if (claimsData.claim) {
+            claimsList = [claimsData.claim]
+          }
+        }
+        
+        setClaims(claimsList)
+      } else {
+        setClaims([])
+      }
     } catch (error) {
       console.error('Error fetching claims:', error)
       setClaims([])
     }
   }
 
-  useEffect(() => {
-    // User data is now managed by AuthContext
-    setLoading(false)
-    fetchCustomers()
-  }, [])
-
-  // Fetch customer cards after customers are loaded
-  useEffect(() => {
-    if (customers.length > 0) {
-      fetchCustomerCards()
-      fetchClaims()
-    }
-  }, [customers])
+  const handleViewCustomer = (customer) => {
+    setSelectedCustomer(customer)
+    setShowCustomerDetails(true)
+  }
 
   const handleEditCustomer = (customer) => {
     setEditingCustomer(customer)
-    setShowEditCustomerModal(true)
+    setEditCustomer({
+      customer_name: customer.customer_name || '',
+      phone_number: customer.phone_number || '',
+      type_of_work: customer.type_of_work || '',
+      discussed_amount: customer.discussed_amount || '',
+      paid_amount: customer.paid_amount || '',
+      pending_amount: customer.pending_amount || '',
+      mode_of_payment: customer.mode_of_payment || '',
+      created_by: String(user.id)
+    })
+    setShowEditModal(true)
   }
 
-  const handleDeleteCustomer = (customer) => {
-    setEditingCustomer(customer)
-    setShowDeleteConfirmModal(true)
+  const handleDeleteCustomer = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this customer?')) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/customers/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+
+      if (response.ok) {
+        setSuccess('Customer deleted successfully')
+        fetchCustomers()
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError('Failed to delete customer')
+        setTimeout(() => setError(''), 3000)
+      }
+    } catch (error) {
+      setError('Error deleting customer')
+      setTimeout(() => setError(''), 3000)
+    }
   }
 
-  const handleAddCard = (customerId, customerName) => {
-    setSelectedCustomerId(customerId)
-    setSelectedCustomerName(customerName)
-    setShowCardForm(true)
+  const handleAddCustomer = async (e) => {
+    e.preventDefault()
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(newCustomer)
+      })
+
+      if (response.ok) {
+        setSuccess('Customer added successfully')
+        setShowAddModal(false)
+        setNewCustomer({
+          customer_name: '',
+          phone_number: '',
+          type_of_work: '',
+          discussed_amount: '',
+          paid_amount: '',
+          pending_amount: '',
+          mode_of_payment: '',
+          created_by: String(user.id)
+        })
+        fetchCustomers()
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError('Failed to add customer')
+        setTimeout(() => setError(''), 3000)
+      }
+    } catch (error) {
+      setError('Error adding customer')
+      setTimeout(() => setError(''), 3000)
+    }
   }
 
-  const handleViewCard = (card) => {
-      setSelectedCard(card)
-      setShowCardModal(true)
+  const handleUpdateCustomer = async (e) => {
+    e.preventDefault()
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(editCustomer)
+      })
+
+      if (response.ok) {
+        setSuccess('Customer updated successfully')
+        setShowEditModal(false)
+        setEditingCustomer(null)
+        fetchCustomers()
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError('Failed to update customer')
+        setTimeout(() => setError(''), 3000)
+      }
+    } catch (error) {
+      setError('Error updating customer')
+      setTimeout(() => setError(''), 3000)
+    }
   }
 
-  const handleAddClaim = (customerId, customerName) => {
-      setSelectedCustomerId(customerId)
-    setSelectedCustomerName(customerName)
-      setIsAddingClaim(true)
-      setShowClaimsModal(true)
+  const getFilteredCustomers = () => {
+    return customers.filter(customer => {
+      const matchesSearch = !searchTerm || 
+        customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.phone_number?.includes(searchTerm) ||
+        customer.type_of_work?.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesWorkType = filterWorkType === 'all' || customer.type_of_work === filterWorkType
+      
+      return matchesSearch && matchesWorkType
+    })
   }
 
-  const handleViewClaims = (customerId, customerName) => {
-    setSelectedCustomerId(customerId)
-    setSelectedCustomerName(customerName)
-          setIsAddingClaim(false)
-          setShowClaimsModal(true)
-        }
-
-  const closeEditCustomerModal = () => {
-    setShowEditCustomerModal(false)
-    setEditingCustomer(null)
+  const getWorkTypeOptions = () => {
+    const workTypes = [...new Set(customers.map(customer => customer.type_of_work).filter(Boolean))]
+    return workTypes
   }
 
-  const closeDeleteConfirmModal = () => {
-    setShowDeleteConfirmModal(false)
-    setEditingCustomer(null)
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
   }
 
-  const closeCardForm = () => {
-    setShowCardForm(false)
-    setSelectedCustomerId(null)
-    setSelectedCustomerName('')
+  const formatAmount = (amount) => {
+    return amount ? `₹${Number(amount).toLocaleString()}` : '₹0'
   }
-
-  const closeCardModal = () => {
-    setShowCardModal(false)
-    setSelectedCard(null)
-  }
-
-  const closeClaimsModal = () => {
-    setShowClaimsModal(false)
-    setSelectedCustomerId(null)
-    setSelectedCustomerName('')
-    setIsAddingClaim(false)
-  }
-
-  const filteredCustomers = (customers || []).filter(customer =>
-    customer && (
-      (customer.customer_name && customer.customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (customer.phone_number && customer.phone_number.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-  )
-
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     )
   }
+
+  if (!user) {
+    return null
+  }
+
+  const handleLogout = () => logout()
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
@@ -196,202 +333,543 @@ export default function CustomersPage() {
           user={user} 
           isDarkMode={isDarkMode} 
           setIsDarkMode={setIsDarkMode}
-          onLogout={logout}
+          onLogout={handleLogout}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto h-screen">
           <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-        {/* Header */}
+            
+            {/* Header */}
             <div className="mb-8">
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 mb-6`}>
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>My Customers</h1>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>Manage your customer relationships and track their progress</p>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>Manage customers you've created</p>
                   </div>
+                  <div className="flex items-center space-x-4">
                     <button
-                    onClick={() => navigate('/employee/add-customer')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${isDarkMode ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                      onClick={() => setShowAddModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
-                    Add Customer
+                      Add Customer
                     </button>
                   </div>
                 </div>
-                </div>
-
-                {/* Search Bar */}
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 mb-6`}>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                <input
-                  type="text"
-                  placeholder="Search customers by name, email, or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-                />
-                  </div>
-                </div>
-
-            {/* Customers Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCustomers.map((customer) => (
-                <UserCard
-                  key={customer.id}
-                  customer={customer}
-                  customerCards={customerCards[customer.id] || []}
-                  claims={claims.filter(claim => claim.customer_id === customer.id)}
-                  onEditCustomer={handleEditCustomer}
-                  onDeleteCustomer={handleDeleteCustomer}
-                  onAddCard={handleAddCard}
-                  onViewCard={handleViewCard}
-                  onAddClaim={handleAddClaim}
-                  onViewClaims={handleViewClaims}
-                  isDarkMode={isDarkMode}
-                />
-              ))}
+              </div>
             </div>
 
-            {filteredCustomers.length === 0 && (
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-12 text-center`}>
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <h3 className={`mt-2 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>No customers found</h3>
-                <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {searchTerm ? 'Try adjusting your search terms.' : 'Get started by adding your first customer.'}
-                </p>
-                {!searchTerm && (
-                  <div className="mt-6">
-                                  <button
-                      onClick={() => navigate('/employee/add-customer')}
-                      className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-                    >
-                      Add Customer
-                                    </button>
-                  </div>
-                )}
+            {/* Error and Success Messages */}
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                {error}
+                <button onClick={() => setError('')} className="ml-2 text-red-500 hover:text-red-700">×</button>
               </div>
             )}
+
+            {success && (
+              <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+                {success}
+                <button onClick={() => setSuccess('')} className="ml-2 text-green-500 hover:text-green-700">×</button>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="mb-6">
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-4`}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Search */}
+                  <div>
+                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                      Search
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Search customers..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Work Type Filter */}
+                  <div>
+                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                      Work Type
+                    </label>
+                    <select
+                      value={filterWorkType}
+                      onChange={(e) => setFilterWorkType(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      <option value="all">All Work Types</option>
+                      {getWorkTypeOptions().map((workType) => (
+                        <option key={workType} value={workType}>
+                          {workType}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Results Count */}
+                  <div className="flex items-end">
+                    <div className={`px-3 py-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg`}>
+                      <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {getFilteredCustomers().length} customers found
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Customers Table */}
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <tr>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Customer
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Contact
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Work Type
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Mode of Payment
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Amounts
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Cards & Claims
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className={`${isDarkMode ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'} divide-y`}>
+                    {getFilteredCustomers().map((customer) => (
+                      <tr key={customer.id} className={`${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {customer.customer_name}
+                            </div>
+                            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              Created: {formatDate(customer.created_at)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {customer.phone_number || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'} break-words max-w-xs`}>
+                            {customer.type_of_work || 'N/A'}
+                          </div>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {customer.mode_of_payment || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="space-y-1">
+                            <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              D: {formatAmount(customer.discussed_amount)}
+                            </div>
+                            <div className={`${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                              P: {formatAmount(customer.paid_amount)}
+                            </div>
+                            <div className={`${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                              Pending: {formatAmount(customer.pending_amount)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleViewClaims(customer)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-2 px-3 py-1 border border-indigo-200 rounded-full hover:bg-indigo-50"
+                          >
+                            View
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => handleViewCustomer(customer)}
+                            className="text-blue-600 hover:text-blue-900 px-3 py-1 border border-blue-200 rounded-full hover:bg-blue-50"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => handleEditCustomer(customer)}
+                            className="text-yellow-600 hover:text-yellow-900 px-3 py-1 border border-yellow-200 rounded-full hover:bg-yellow-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                            className="text-red-600 hover:text-red-900 px-3 py-1 border border-red-200 rounded-full hover:bg-red-50"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Add Customer Modal */}
+            {showAddModal && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                  <div className="mt-3">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Customer</h3>
+                    <form onSubmit={handleAddCustomer} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={newCustomer.customer_name}
+                          onChange={(e) => setNewCustomer({...newCustomer, customer_name: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input
+                          type="text"
+                          required
+                          value={newCustomer.phone_number}
+                          onChange={(e) => setNewCustomer({...newCustomer, phone_number: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Type of Work</label>
+                        <input
+                          type="text"
+                          required
+                          value={newCustomer.type_of_work}
+                          onChange={(e) => setNewCustomer({...newCustomer, type_of_work: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Discussed</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={newCustomer.discussed_amount}
+                            onChange={(e) => {
+                              const discussed = parseFloat(e.target.value) || 0
+                              const paid = parseFloat(newCustomer.paid_amount) || 0
+                              const pending = Math.max(0, discussed - paid)
+                              setNewCustomer({
+                                ...newCustomer, 
+                                discussed_amount: e.target.value,
+                                pending_amount: pending.toString()
+                              })
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Paid</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={newCustomer.paid_amount}
+                            onChange={(e) => {
+                              const discussed = parseFloat(newCustomer.discussed_amount) || 0
+                              const paid = parseFloat(e.target.value) || 0
+                              const pending = Math.max(0, discussed - paid)
+                              setNewCustomer({
+                                ...newCustomer, 
+                                paid_amount: e.target.value,
+                                pending_amount: pending.toString()
+                              })
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Pending (Auto)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={newCustomer.pending_amount}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mode of Payment</label>
+                        <select
+                          value={newCustomer.mode_of_payment}
+                          onChange={(e) => setNewCustomer({...newCustomer, mode_of_payment: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select payment mode</option>
+                          <option value="cash">Cash</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="cheque">Cheque</option>
+                          <option value="card">Card</option>
+                        </select>
+                      </div>
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddModal(false)}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                        >
+                          Add Customer
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Customer Modal */}
+            {showEditModal && editingCustomer && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                  <div className="mt-3">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Customer</h3>
+                    <form onSubmit={handleUpdateCustomer} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={editCustomer.customer_name}
+                          onChange={(e) => setEditCustomer({...editCustomer, customer_name: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input
+                          type="text"
+                          required
+                          value={editCustomer.phone_number}
+                          onChange={(e) => setEditCustomer({...editCustomer, phone_number: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Type of Work</label>
+                        <input
+                          type="text"
+                          required
+                          value={editCustomer.type_of_work}
+                          onChange={(e) => setEditCustomer({...editCustomer, type_of_work: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Discussed</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editCustomer.discussed_amount}
+                            onChange={(e) => {
+                              const discussed = parseFloat(e.target.value) || 0
+                              const paid = parseFloat(editCustomer.paid_amount) || 0
+                              const pending = Math.max(0, discussed - paid)
+                              setEditCustomer({
+                                ...editCustomer, 
+                                discussed_amount: e.target.value,
+                                pending_amount: pending.toString()
+                              })
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Paid</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editCustomer.paid_amount}
+                            onChange={(e) => {
+                              const discussed = parseFloat(editCustomer.discussed_amount) || 0
+                              const paid = parseFloat(e.target.value) || 0
+                              const pending = Math.max(0, discussed - paid)
+                              setEditCustomer({
+                                ...editCustomer, 
+                                paid_amount: e.target.value,
+                                pending_amount: pending.toString()
+                              })
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Pending (Auto)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editCustomer.pending_amount}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mode of Payment</label>
+                        <select
+                          value={editCustomer.mode_of_payment}
+                          onChange={(e) => setEditCustomer({...editCustomer, mode_of_payment: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select payment mode</option>
+                          <option value="cash">Cash</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="cheque">Cheque</option>
+                          <option value="card">Card</option>
+                        </select>
+                      </div>
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowEditModal(false)}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                        >
+                          Update Customer
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Customer Details Modal */}
+            {showCustomerDetails && selectedCustomer && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                  <div className="mt-3">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">Customer Details</h3>
+                      <button
+                        onClick={() => setShowCustomerDetails(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Name:</span>
+                        <span className="ml-2 text-gray-600">{selectedCustomer.customer_name}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Phone:</span>
+                        <span className="ml-2 text-gray-600">{selectedCustomer.phone_number}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Work Type:</span>
+                        <span className="ml-2 text-gray-600">{selectedCustomer.type_of_work}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Mode of Payment:</span>
+                        <span className="ml-2 text-gray-600">{selectedCustomer.mode_of_payment}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Discussed Amount:</span>
+                        <span className="ml-2 text-gray-600">{formatAmount(selectedCustomer.discussed_amount)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Paid Amount:</span>
+                        <span className="ml-2 text-green-600">{formatAmount(selectedCustomer.paid_amount)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Pending Amount:</span>
+                        <span className="ml-2 text-red-600">{formatAmount(selectedCustomer.pending_amount)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Created:</span>
+                        <span className="ml-2 text-gray-600">{formatDate(selectedCustomer.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Claims Modal */}
+            {showClaimsModal && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-10 mx-auto p-5 border shadow-lg rounded-md bg-white" style={{ width: '90%', maxWidth: '1200px' }}>
+                  <div className="mt-3">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Cards & Claims - {selectedCustomerForView?.customer_name}
+                      </h3>
+                      <button
+                        onClick={() => setShowClaimsModal(false)}
+                        className="text-gray-400 hover:text-gray-600 text-2xl"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    {selectedCard ? (
+                      <div className="space-y-4">
+                        <div className="flex justify-center">
+                          <UserCard
+                            cardNumber={selectedCard.card_number}
+                            registerNumber={selectedCard.register_number}
+                            cardHolderName={selectedCard.card_holder_name}
+                            agentName={selectedCard.agent_name}
+                            agentMobile={selectedCard.agent_mobile}
+                            createdDate={selectedCard.created_at ? new Date(selectedCard.created_at).toLocaleDateString() : 'N/A'}
+                          />
+                        </div>
+                        <ClaimsTable card={selectedCard} claims={claims} />
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">No card found for this customer.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
         </main>
       </div>
-
-      {/* Modals */}
-      {/* Edit Customer Modal */}
-      {showEditCustomerModal && editingCustomer && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{backgroundColor: 'rgba(0, 0, 0, 0.1)'}} onClick={closeEditCustomerModal}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <EditCustomerForm
-              customer={editingCustomer}
-              onClose={closeEditCustomerModal}
-              onSuccess={() => {
-                closeEditCustomerModal()
-                fetchCustomers()
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirmModal && editingCustomer && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{backgroundColor: 'rgba(0, 0, 0, 0.1)'}} onClick={closeDeleteConfirmModal}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-medium text-gray-900">Delete Customer</h3>
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to delete {editingCustomer.name}? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={closeDeleteConfirmModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                try {
-                  const token = localStorage.getItem('token')
-                  const response = await fetch(`/api/customers/${editingCustomer.id}`, {
-                      method: 'DELETE',
-                    headers: {
-                      'Authorization': `Bearer ${token}`
-                      }
-                  })
-                  if (response.ok) {
-                      closeDeleteConfirmModal()
-                    fetchCustomers()
-                  }
-                } catch (error) {
-                    console.error('Error deleting customer:', error)
-                  }
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Card Form Modal */}
-      {showCardForm && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{backgroundColor: 'rgba(0, 0, 0, 0.1)'}} onClick={closeCardForm}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <CardForm
-              customerId={selectedCustomerId}
-              customerName={selectedCustomerName}
-              onClose={closeCardForm}
-              onSuccess={() => {
-                closeCardForm()
-                fetchCustomerCards()
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Card Modal */}
-      {showCardModal && selectedCard && (
-      <WhiteCardPopup 
-          card={selectedCard}
-        onClose={closeCardModal} 
-      />
-      )}
-
-      {/* Claims Modal */}
-      {showClaimsModal && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{backgroundColor: 'rgba(0, 0, 0, 0.1)'}} onClick={closeClaimsModal}>
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                  <ClaimsTable
-              customerId={selectedCustomerId}
-              customerName={selectedCustomerName}
-              onClose={closeClaimsModal}
-              isAddingClaim={isAddingClaim}
-              onSuccess={() => {
-                      closeClaimsModal()
-                fetchClaims()
-                    }}
-                  />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

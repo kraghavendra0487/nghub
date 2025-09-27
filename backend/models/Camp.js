@@ -40,15 +40,27 @@ class Camp {
   // Get camps by employee ID
   static async findByEmployeeId(employeeId) {
     try {
+      // First get the user's employee_id
+      const userQuery = 'SELECT employee_id FROM users WHERE id = $1';
+      const userResult = await pool.query(userQuery, [employeeId]);
+      
+      if (!userResult.rows.length) {
+        return [];
+      }
+      
+      const employee_id = userResult.rows[0].employee_id;
+      
       const query = `
         SELECT c.*, u1.name as conducted_by_name, u1.email as conducted_by_email, u2.name as created_by_name, u2.email as created_by_email
         FROM camps c
         LEFT JOIN users u1 ON c.conducted_by = u1.employee_id
         LEFT JOIN users u2 ON c.created_by = u2.id
-        WHERE c.conducted_by = $1 OR $1 = ANY(c.assigned_to) OR c.created_by = $1
+        WHERE c.conducted_by = $1 
+           OR c.created_by = $2
+           OR $2::text = ANY(c.assigned_to)
         ORDER BY c.created_at DESC
       `;
-      const result = await pool.query(query, [employeeId]);
+      const result = await pool.query(query, [employee_id, employeeId]);
       return result.rows;
     } catch (error) {
       console.error('Error finding camps by employee ID:', error);

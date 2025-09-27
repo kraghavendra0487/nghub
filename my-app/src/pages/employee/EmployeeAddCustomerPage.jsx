@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import EmployeeSidebar from '../../components/EmployeeSidebar'
+import API_BASE_URL from '../../config/api'
 
 export default function AddCustomer() {
-  const { user, logout } = useAuth()
+  const { user, getAuthHeaders, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -33,7 +34,8 @@ export default function AddCustomer() {
       if (name === 'discussed_amount' || name === 'paid_amount') {
         const discussed = parseFloat(newData.discussed_amount) || 0
         const paid = parseFloat(newData.paid_amount) || 0
-        newData.pending_amount = (discussed - paid).toString()
+        const pending = Math.max(0, discussed - paid)
+        newData.pending_amount = pending.toString()
       }
       
       return newData
@@ -76,12 +78,11 @@ export default function AddCustomer() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/customers', {
+      const response = await fetch(`${API_BASE_URL}/api/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...getAuthHeaders()
         },
         body: JSON.stringify({
           customer_name: formData.customer_name,
@@ -90,7 +91,8 @@ export default function AddCustomer() {
           discussed_amount: discussedAmount,
           paid_amount: paidAmount,
           pending_amount: pendingAmount,
-          mode_of_payment: formData.mode_of_payment
+          mode_of_payment: formData.mode_of_payment,
+          created_by: user.id
         }),
       })
 
@@ -242,7 +244,7 @@ export default function AddCustomer() {
 
             <div>
               <label htmlFor="pending_amount" className="block text-sm font-medium text-gray-700 mb-1">
-                Pending Amount (₹)
+                Pending Amount (₹) - Auto Calculated
               </label>
               <input
                 type="number"
@@ -250,9 +252,10 @@ export default function AddCustomer() {
                 name="pending_amount"
                 value={formData.pending_amount}
                 readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-                placeholder="Auto-calculated"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+                placeholder="Auto-calculated: Discussed - Paid"
               />
+              <p className="text-xs text-gray-500 mt-1">Formula: Discussed Amount - Paid Amount = Pending Amount</p>
             </div>
 
             <div>

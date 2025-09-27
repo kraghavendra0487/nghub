@@ -13,7 +13,7 @@ router.post('/logout', protect, UserController.logoutUser);
 
 // Secure user management with role checks
 router.get('/', protect, authorize('admin'), UserController.getAllUsers);
-router.get('/employees', protect, authorize('admin'), UserController.getEmployees);
+router.get('/employees', protect, authorize('admin', 'employee'), UserController.getEmployees);
 router.post('/', protect, authorize('admin'), UserController.createUser);
 router.get('/:id', protect, authorize('admin'), UserController.getUserById);
 router.put('/:id', protect, authorize('admin'), UserController.updateUser);

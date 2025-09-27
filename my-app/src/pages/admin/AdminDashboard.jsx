@@ -105,10 +105,10 @@ export default function AdminDashboard() {
     return Number.isFinite(n) ? n : 0
   }
   const totalPaid = customers.reduce((sum, c) => sum + toNumber(c.paid_amount), 0)
-  const totalDiscussed = customers.reduce((sum, c) => sum + toNumber(c.discussed_amount), 0)
   const pendingCustomerPayments = customers.reduce((sum, c) => sum + toNumber(c.pending_amount), 0)
   const getState = (cl) => (cl.process_state || cl.status || '').toLowerCase()
   const pendingClaimsAmount = claims.filter(cl => ['pending','initiated'].includes(getState(cl))).reduce((s, cl) => s + toNumber(cl.pending_amount || cl.discussed_amount || 0), 0)
+  const totalDiscussed = totalPaid + pendingCustomerPayments + pendingClaimsAmount
   const completedCamps = camps.filter(c => (c.status || '').toLowerCase() === 'completed')
   const plannedCamps = camps.filter(c => (c.status || '').toLowerCase() === 'planned')
   const ongoingCamps = camps.filter(c => (c.status || '').toLowerCase() === 'ongoing')
