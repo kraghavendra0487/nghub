@@ -13,7 +13,9 @@ app.use(cors({
     const allowed = [
       'http://localhost:3000', // Frontend URL for local dev
       'http://localhost:5173',
-      'https://6b974678ec6e.ngrok-free.app',// Vite dev server URL
+      'https://6b974678ec6e.ngrok-free.app',
+      'https://nghub.onrender.com/',
+      // Vite dev server URL
        process.env.FRONTEND_ORIGIN, // Production URL stored in env
     ].filter(Boolean); // Filters out any falsy values like empty strings
     if (!origin || allowed.includes(origin)) return callback(null, true);
