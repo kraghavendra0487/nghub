@@ -1,50 +1,52 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { runPy } = require('./utils/emailRunner'); // Assuming this is for some email functionality
+const fs = require('fs'); // Import the file system module
+const { runPy } = require('./utils/emailRunner'); // kept as-is in case you use it elsewhere
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware for CORS
+// --- CORS ---
+// In production, replace '*' with your actual origin(s) and set credentials appropriately.
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowed = [
-      'http://localhost:5000', // Frontend URL for local dev
-      'http://localhost:5173',
-      'https://6b974678ec6e.ngrok-free.app',
-      'https://nghub.onrender.com/',
-      // Vite dev server URL
-       process.env.FRONTEND_ORIGIN, // Production URL stored in env
-    ].filter(Boolean); // Filters out any falsy values like empty strings
-    if (!origin || allowed.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'), false);
-  },
+  origin: '*',
   credentials: true,
 }));
 
-// JSON parsing middleware - exclude specific upload routes
+// Create reusable parsers with limits
+const jsonParser = express.json({ limit: '50mb' });
+const urlencodedParser = express.urlencoded({ extended: true, limit: '50mb' });
+
+// Conditional JSON parsing middleware
 app.use((req, res, next) => {
+  // Skip JSON parsing for the file upload route
   if (req.path === '/api/financial-transactions/upload' && req.method === 'POST') {
-    return next(); // Skip JSON parsing for file uploads
+    return next();
   }
-  express.json({ limit: '50mb' })(req, res, next);
+  return jsonParser(req, res, next);
 });
 
-// URL-encoded parsing middleware - exclude specific upload routes
+// Conditional URL-encoded parsing middleware
 app.use((req, res, next) => {
+  // Skip URL-encoded parsing for the file upload route
   if (req.path === '/api/financial-transactions/upload' && req.method === 'POST') {
-    return next(); // Skip URL-encoded parsing for file uploads
+    return next();
   }
-  express.urlencoded({ extended: true, limit: '50mb' })(req, res, next);
+  return urlencodedParser(req, res, next);
 });
 
-// Serve static files from React build (assuming the build is in '../my-app/dist')
-// Only serve static files if the dist directory exists
+// Define the path to the frontend build directory
 const distPath = path.join(__dirname, '../my-app/dist');
-if (require('fs').existsSync(distPath)) {
+
+// Serve static files from the React build directory if it exists
+if (fs.existsSync(distPath)) {
+  console.log(`✅ Frontend 'dist' directory found at: ${distPath}`);
   app.use(express.static(distPath));
+} else {
+  console.warn(`⚠ Frontend 'dist' directory NOT found at: ${distPath}. Static assets might not be served.`);
+  console.warn('Please ensure you have run "npm run build" in your my-app directory.');
 }
 
 // Request logging middleware
@@ -55,42 +57,50 @@ app.use((req, res, next) => {
 });
 
 // Import and use all API routes
-const apiRoutes = require('./routes/index');
+const apiRoutes = require('./routes/index'); // Make sure this path is correct
 app.use('/api', apiRoutes);
+
+// 404 handler for API routes (this should come before the catch-all that serves index.html)
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API route not found', path: req.originalUrl });
+});
+
+// Catch-all handler: serves React's index.html for any non-API routes
+app.get('*', (req, res) => {
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    console.log(`Serving index.html for route: ${req.originalUrl}`);
+    res.sendFile(indexPath);
+  } else {
+    console.error(`❌ index.html NOT found at: ${indexPath}. Cannot serve frontend.`);
+    res.status(404).json({
+      error: 'Frontend not built or index.html not found.',
+      message: 'Please ensure "npm run build" has been run in the my-app directory and deployed correctly.',
+      attemptedPath: indexPath,
+      apiHint: 'API endpoints are available at /api/*',
+    });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled error:', err);
-  res.status(500).json({
+  res.status(err.status || 500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
-});
-
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: 'API route not found' });
-});
-
-// Catch-all handler: send back React's index.html file for any non-API routes
-// Only if the dist directory exists
-app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, '../my-app/dist/index.html');
-  if (require('fs').existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.status(404).json({ 
-      error: 'Frontend not built. Please run "npm run build" in the my-app directory.',
-      message: 'API endpoints are available at /api/*'
-    });
-  }
 });
 
 // Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Frontend served from: ${path.join(__dirname, '../my-app/dist')}`);
   console.log(`🔗 API endpoints available at: http://localhost:${PORT}/api`);
+  if (fs.existsSync(distPath)) {
+    console.log(`📱 Frontend potentially served from: http://localhost:${PORT}`);
+  } else {
+    console.warn('⚠ Frontend will NOT be served as the "dist" directory was not found.');
+  }
 });
 
 module.exports = app;
