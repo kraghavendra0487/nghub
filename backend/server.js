@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: (origin, callback) => {
     const allowed = [
-      'http://localhost:3000', // Frontend URL for local dev
+      'http://localhost:5000', // Frontend URL for local dev
       'http://localhost:5173',
       'https://6b974678ec6e.ngrok-free.app',
       'https://nghub.onrender.com/',
