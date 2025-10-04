@@ -33,7 +33,9 @@ class CustomerController {
     try {
       const { employeeId } = req.params;
       const result = await CustomerService.getCustomersByEmployeeId(employeeId);
-      res.json(result);
+      console.log('🔍 FETCH - Customers for employee', employeeId, ':', result.customers?.length, 'customers');
+      console.log('🔍 FETCH - Sample customer:', result.customers?.[0]);
+      res.json(result.customers);
     } catch (error) {
       console.error('❌ Error getting customers by employee ID:', error.message);
       res.status(500).json({ error: 'Failed to fetch customers' });
@@ -44,7 +46,10 @@ class CustomerController {
   static async createCustomer(req, res) {
     try {
       const customerData = req.body;
+      console.log('🔍 CREATE - Request body received:', customerData);
+      console.log('🔍 CREATE - referred_person field:', customerData.referred_person);
       const result = await CustomerService.createCustomer(customerData);
+      console.log('🔍 CREATE - Result:', result);
       res.status(201).json(result);
     } catch (error) {
       console.error('❌ Error creating customer:', error.message);
@@ -57,7 +62,11 @@ class CustomerController {
     try {
       const { id } = req.params;
       const customerData = req.body;
+      console.log('🔍 UPDATE - Customer ID:', id);
+      console.log('🔍 UPDATE - Request body received:', customerData);
+      console.log('🔍 UPDATE - referred_person field:', customerData.referred_person);
       const result = await CustomerService.updateCustomer(id, customerData);
+      console.log('🔍 UPDATE - Result:', result);
       res.json(result);
     } catch (error) {
       console.error('❌ Error updating customer:', error.message);

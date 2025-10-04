@@ -56,13 +56,20 @@ class Customer {
   // Create new customer
   static async create(customerData) {
     try {
-      const { customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, created_by } = customerData;
+      console.log('Customer data received:', customerData);
+      const { customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, referred_person, created_by } = customerData;
+      
+      // Handle referred_person - convert undefined/null to empty string
+      const referredPersonValue = referred_person || '';
+      
       const query = `
-        INSERT INTO customers (customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO customers (customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, referred_person, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `;
-      const values = [customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, created_by];
+      const values = [customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, referredPersonValue, created_by];
+      
+      console.log('SQL values:', values);
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -74,14 +81,21 @@ class Customer {
   // Update customer
   static async update(id, customerData) {
     try {
-      const { customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment } = customerData;
+      console.log('Update customer data received:', customerData);
+      const { customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, referred_person } = customerData;
+      
+      // Handle referred_person - convert undefined/null to empty string
+      const referredPersonValue = referred_person || '';
+      
       const query = `
         UPDATE customers 
-        SET customer_name = $1, phone_number = $2, type_of_work = $3, discussed_amount = $4, paid_amount = $5, pending_amount = $6, mode_of_payment = $7, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $8
+        SET customer_name = $1, phone_number = $2, type_of_work = $3, discussed_amount = $4, paid_amount = $5, pending_amount = $6, mode_of_payment = $7, referred_person = $8, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $9
         RETURNING *
       `;
-      const values = [customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, id];
+      const values = [customer_name, phone_number, type_of_work, discussed_amount, paid_amount, pending_amount, mode_of_payment, referredPersonValue, id];
+      
+      console.log('Update SQL values:', values);
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -109,7 +123,7 @@ class Customer {
         SELECT c.*, u.name as employee_name, u.email as employee_email
         FROM customers c
         LEFT JOIN users u ON c.created_by = u.id
-        WHERE c.customer_name ILIKE $1 OR c.phone_number ILIKE $1 OR c.type_of_work ILIKE $1
+        WHERE c.customer_name ILIKE $1 OR c.phone_number ILIKE $1 OR c.type_of_work ILIKE $1 OR c.referred_person ILIKE $1
         ORDER BY c.created_at DESC
       `;
       const result = await pool.query(query, [`%${searchTerm}%`]);

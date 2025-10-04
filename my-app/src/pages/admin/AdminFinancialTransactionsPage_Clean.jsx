@@ -115,20 +115,10 @@ export default function AdminFinancialTransactionsPage() {
       })
       const data = await response.json()
       if (response.ok) {
-        // Handle different response structures
-        if (data.success && Array.isArray(data.data)) {
-          setBanks(data.data)
-        } else if (Array.isArray(data)) {
-          setBanks(data)
-        } else {
-          setBanks([])
-        }
-      } else {
-        setBanks([])
+        setBanks(data || [])
       }
     } catch (error) {
       console.error('Error fetching banks:', error)
-      setBanks([])
     }
   }
 
@@ -357,7 +347,7 @@ export default function AdminFinancialTransactionsPage() {
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-gray-300"
                     >
                       <option value="">All Banks</option>
-                      {Array.isArray(banks) && banks.map((bank) => (
+                      {banks.map((bank) => (
                         <option key={bank} value={bank}>{bank}</option>
                       ))}
                     </select>
@@ -374,7 +364,7 @@ export default function AdminFinancialTransactionsPage() {
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-gray-300"
                     >
                       <option value="">All Types</option>
-                      {Array.isArray(types) && types.map((type) => (
+                      {types.map((type) => (
                         <option key={type} value={type}>{type}</option>
                       ))}
                     </select>
@@ -647,10 +637,10 @@ export default function AdminFinancialTransactionsPage() {
                           onChange={(e) => setNewTransaction({...newTransaction, type: e.target.value})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         >
-                         <option value="">Select type</option>
-                         {Array.isArray(types) && types.map((type) => (
-                           <option key={type} value={type}>{type}</option>
-                         ))}
+                          <option value="">Select type</option>
+                          {types.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
                         </select>
                       </div>
 

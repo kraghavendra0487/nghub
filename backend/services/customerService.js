@@ -40,7 +40,10 @@ class CustomerService {
   // Create customer
   static async createCustomer(customerData) {
     try {
+      console.log('🔍 SERVICE CREATE - Data received:', customerData);
+      console.log('🔍 SERVICE CREATE - referred_person:', customerData.referred_person);
       const customer = await Customer.create(customerData);
+      console.log('🔍 SERVICE CREATE - Customer created:', customer);
       return { customer };
     } catch (error) {
       console.error('Error creating customer:', error);
@@ -51,10 +54,14 @@ class CustomerService {
   // Update customer
   static async updateCustomer(id, customerData) {
     try {
+      console.log('🔍 SERVICE UPDATE - ID:', id);
+      console.log('🔍 SERVICE UPDATE - Data received:', customerData);
+      console.log('🔍 SERVICE UPDATE - referred_person:', customerData.referred_person);
       const customer = await Customer.update(id, customerData);
       if (!customer) {
         throw new Error('Customer not found');
       }
+      console.log('🔍 SERVICE UPDATE - Customer updated:', customer);
       return { customer };
     } catch (error) {
       console.error('Error updating customer:', error);

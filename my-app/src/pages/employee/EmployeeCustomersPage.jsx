@@ -42,6 +42,7 @@ export default function EmployeeCustomersPage() {
     paid_amount: '',
     pending_amount: '',
     mode_of_payment: '',
+    referred_person: '',
     created_by: user?.id ? String(user.id) : ''
   })
 
@@ -54,6 +55,7 @@ export default function EmployeeCustomersPage() {
     paid_amount: '',
     pending_amount: '',
     mode_of_payment: '',
+    referred_person: '',
     created_by: user?.id ? String(user.id) : ''
   })
 
@@ -73,7 +75,9 @@ export default function EmployeeCustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/customers/employee/${user.id}`, {
+      // Add cache-busting parameter to ensure fresh data
+      const timestamp = Date.now()
+      const response = await fetch(`${API_BASE_URL}/api/customers/employee/${user.id}?t=${timestamp}`, {
         headers: getAuthHeaders()
       })
 
@@ -214,7 +218,7 @@ export default function EmployeeCustomersPage() {
 
   const handleEditCustomer = (customer) => {
     setEditingCustomer(customer)
-    setEditCustomer({
+    const editData = {
       customer_name: customer.customer_name || '',
       phone_number: customer.phone_number || '',
       type_of_work: customer.type_of_work || '',
@@ -222,8 +226,10 @@ export default function EmployeeCustomersPage() {
       paid_amount: customer.paid_amount || '',
       pending_amount: customer.pending_amount || '',
       mode_of_payment: customer.mode_of_payment || '',
+      referred_person: customer.referred_person || '',
       created_by: String(user.id)
-    })
+    }
+    setEditCustomer(editData)
     setShowEditModal(true)
   }
 
@@ -254,6 +260,23 @@ export default function EmployeeCustomersPage() {
 
   const handleAddCustomer = async (e) => {
     e.preventDefault()
+    
+    // Validate amounts before sending
+    const discussedAmount = parseFloat(newCustomer.discussed_amount) || 0
+    const paidAmount = parseFloat(newCustomer.paid_amount) || 0
+    
+    if (discussedAmount > 99999999.99) {
+      setError('Discussed amount cannot exceed ₹99,999,999.99')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+    
+    if (paidAmount > 99999999.99) {
+      setError('Paid amount cannot exceed ₹99,999,999.99')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/customers`, {
         method: 'POST',
@@ -275,22 +298,42 @@ export default function EmployeeCustomersPage() {
           paid_amount: '',
           pending_amount: '',
           mode_of_payment: '',
+          referred_person: '',
           created_by: String(user.id)
         })
         fetchCustomers()
         setTimeout(() => setSuccess(''), 3000)
       } else {
-        setError('Failed to add customer')
-        setTimeout(() => setError(''), 3000)
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to add customer')
+        setTimeout(() => setError(''), 5000)
       }
     } catch (error) {
+      console.error('Error adding customer:', error)
       setError('Error adding customer')
-      setTimeout(() => setError(''), 3000)
+      setTimeout(() => setError(''), 5000)
     }
   }
 
   const handleUpdateCustomer = async (e) => {
     e.preventDefault()
+    
+    // Validate amounts before sending
+    const discussedAmount = parseFloat(editCustomer.discussed_amount) || 0
+    const paidAmount = parseFloat(editCustomer.paid_amount) || 0
+    
+    if (discussedAmount > 99999999.99) {
+      setError('Discussed amount cannot exceed ₹99,999,999.99')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+    
+    if (paidAmount > 99999999.99) {
+      setError('Paid amount cannot exceed ₹99,999,999.99')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
         method: 'PUT',
@@ -304,16 +347,21 @@ export default function EmployeeCustomersPage() {
       if (response.ok) {
         setSuccess('Customer updated successfully')
         setShowEditModal(false)
-    setEditingCustomer(null)
-        fetchCustomers()
+        setEditingCustomer(null)
+        // Force refresh customers list
+        setTimeout(() => {
+          fetchCustomers()
+        }, 100)
         setTimeout(() => setSuccess(''), 3000)
       } else {
-        setError('Failed to update customer')
-        setTimeout(() => setError(''), 3000)
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to update customer')
+        setTimeout(() => setError(''), 5000)
       }
     } catch (error) {
+      console.error('Error updating customer:', error)
       setError('Error updating customer')
-      setTimeout(() => setError(''), 3000)
+      setTimeout(() => setError(''), 5000)
     }
   }
 
@@ -322,7 +370,8 @@ export default function EmployeeCustomersPage() {
       const matchesSearch = !searchTerm || 
         customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.phone_number?.includes(searchTerm) ||
-        customer.type_of_work?.toLowerCase().includes(searchTerm.toLowerCase())
+        customer.type_of_work?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.referred_person?.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesWorkType = filterWorkType === 'all' || customer.type_of_work === filterWorkType
       
@@ -516,6 +565,9 @@ export default function EmployeeCustomersPage() {
                         <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                           Work: {customer.type_of_work || 'N/A'}
                         </p>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          Referred By: {customer.referred_person || 'N/A'}
+                        </p>
                         <div className="flex justify-between text-xs mt-1">
                           <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             D: {formatAmount(customer.discussed_amount)}
@@ -592,6 +644,9 @@ export default function EmployeeCustomersPage() {
                                 <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                   Work: {customer.type_of_work || 'N/A'}
                                 </p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  Referred By: {customer.referred_person || 'N/A'}
+                                </p>
                               </div>
                             </div>
                             <div className="flex justify-between text-sm">
@@ -658,6 +713,9 @@ export default function EmployeeCustomersPage() {
                           Work Type
                         </th>
                         <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Referred Person
+                        </th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                           Mode of Payment
                         </th>
                         <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
@@ -691,6 +749,9 @@ export default function EmployeeCustomersPage() {
                             <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'} break-words max-w-xs`}>
                               {customer.type_of_work || 'N/A'}
                             </div>
+                          </td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                            {customer.referred_person || 'N/A'}
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                             {customer.mode_of_payment || 'N/A'}
@@ -790,6 +851,7 @@ export default function EmployeeCustomersPage() {
                           <input
                             type="number"
                             step="0.01"
+                            max="99999999.99"
                             value={newCustomer.discussed_amount}
                             onChange={(e) => {
                               const discussed = parseFloat(e.target.value) || 0
@@ -809,6 +871,7 @@ export default function EmployeeCustomersPage() {
                           <input
                             type="number"
                             step="0.01"
+                            max="99999999.99"
                             value={newCustomer.paid_amount}
                             onChange={(e) => {
                               const discussed = parseFloat(newCustomer.discussed_amount) || 0
@@ -845,6 +908,16 @@ export default function EmployeeCustomersPage() {
                           <option value="cash">Cash</option>
                           <option value="online">Online</option>
                         </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Referred Person</label>
+                        <input
+                          type="text"
+                          value={newCustomer.referred_person}
+                          onChange={(e) => setNewCustomer({...newCustomer, referred_person: e.target.value})}
+                          placeholder="Enter referred person name (optional)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                       <div className="flex justify-end space-x-3 pt-4">
                         <button
@@ -910,6 +983,7 @@ export default function EmployeeCustomersPage() {
                           <input
                             type="number"
                             step="0.01"
+                            max="99999999.99"
                             value={editCustomer.discussed_amount}
                             onChange={(e) => {
                               const discussed = parseFloat(e.target.value) || 0
@@ -923,12 +997,13 @@ export default function EmployeeCustomersPage() {
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
-      </div>
+                        </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Paid</label>
                           <input
                             type="number"
                             step="0.01"
+                            max="99999999.99"
                             value={editCustomer.paid_amount}
                             onChange={(e) => {
                               const discussed = parseFloat(editCustomer.discussed_amount) || 0
@@ -966,6 +1041,16 @@ export default function EmployeeCustomersPage() {
                           <option value="online">Online</option>
                         </select>
               </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Referred Person</label>
+                        <input
+                          type="text"
+                          value={editCustomer.referred_person}
+                          onChange={(e) => setEditCustomer({...editCustomer, referred_person: e.target.value})}
+                          placeholder="Enter referred person name (optional)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
                       <div className="flex justify-end space-x-3 pt-4">
               <button
                           type="button"
@@ -1013,6 +1098,10 @@ export default function EmployeeCustomersPage() {
                       <div>
                         <span className="font-medium text-gray-700">Work Type:</span>
                         <span className="ml-2 text-gray-600">{selectedCustomer.type_of_work}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Referred By:</span>
+                        <span className="ml-2 text-gray-600">{selectedCustomer.referred_person || 'N/A'}</span>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Mode of Payment:</span>
