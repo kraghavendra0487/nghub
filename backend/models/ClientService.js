@@ -335,6 +335,60 @@ class ClientService {
     }
   }
 
+  // Get all client services for export with filtering
+  static async findAllForExport(options = {}) {
+    try {
+      const {
+        search = '',
+        startDate = '',
+        endDate = ''
+      } = options;
+
+      let whereConditions = [];
+      let queryParams = [];
+      let paramIndex = 1;
+
+      // Search across available fields
+      if (search) {
+        whereConditions.push(`(
+          establishment_name ILIKE $${paramIndex} OR
+          employer_name ILIKE $${paramIndex} OR
+          email_id ILIKE $${paramIndex} OR
+          mobile_number ILIKE $${paramIndex}
+        )`);
+        queryParams.push(`%${search}%`);
+        paramIndex++;
+      }
+
+      // Date range filter
+      if (startDate) {
+        whereConditions.push(`created_at >= $${paramIndex}`);
+        queryParams.push(startDate);
+        paramIndex++;
+      }
+
+      if (endDate) {
+        whereConditions.push(`created_at <= $${paramIndex}`);
+        queryParams.push(endDate);
+        paramIndex++;
+      }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+      const query = `
+        SELECT * FROM client_services 
+        ${whereClause}
+        ORDER BY created_at DESC
+      `;
+
+      const result = await pool.query(query, queryParams);
+      return result.rows;
+    } catch (error) {
+      console.error('Error finding client services for export:', error);
+      throw error;
+    }
+  }
+
   // Get client service with all service items
   static async findByIdWithServices(id) {
     try {
@@ -371,11 +425,13 @@ class ClientService {
       let queryParams = [];
       let paramIndex = 1;
 
-      // Search across contact fields only
+      // Search across available fields
       if (search) {
         whereConditions.push(`(
-          cs.contact_person ILIKE $${paramIndex} OR
-          cs.contact_number ILIKE $${paramIndex}
+          cs.establishment_name ILIKE $${paramIndex} OR
+          cs.employer_name ILIKE $${paramIndex} OR
+          cs.email_id ILIKE $${paramIndex} OR
+          cs.mobile_number ILIKE $${paramIndex}
         )`);
         queryParams.push(`%${search}%`);
         paramIndex++;
@@ -383,13 +439,13 @@ class ClientService {
 
       // Date range filter
       if (startDate) {
-        whereConditions.push(`cs.date >= $${paramIndex}`);
+        whereConditions.push(`cs.created_at >= $${paramIndex}`);
         queryParams.push(startDate);
         paramIndex++;
       }
 
       if (endDate) {
-        whereConditions.push(`cs.date <= $${paramIndex}`);
+        whereConditions.push(`cs.created_at <= $${paramIndex}`);
         queryParams.push(endDate);
         paramIndex++;
       }

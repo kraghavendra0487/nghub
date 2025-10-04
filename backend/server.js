@@ -40,8 +40,8 @@ const urlencodedParser = express.urlencoded({ extended: true, limit: '50mb' });
 
 // Conditional JSON parsing middleware
 app.use((req, res, next) => {
-  // Skip JSON parsing for the file upload route
-  if (req.path === '/api/financial-transactions/upload' && req.method === 'POST') {
+  // Skip JSON parsing for the file upload routes
+  if ((req.path === '/api/financial-transactions/upload' || req.path === '/api/client-services/upload') && req.method === 'POST') {
     return next();
   }
   return jsonParser(req, res, next);
@@ -49,8 +49,8 @@ app.use((req, res, next) => {
 
 // Conditional URL-encoded parsing middleware
 app.use((req, res, next) => {
-  // Skip URL-encoded parsing for the file upload route
-  if (req.path === '/api/financial-transactions/upload' && req.method === 'POST') {
+  // Skip URL-encoded parsing for the file upload routes
+  if ((req.path === '/api/financial-transactions/upload' || req.path === '/api/client-services/upload') && req.method === 'POST') {
     return next();
   }
   return urlencodedParser(req, res, next);

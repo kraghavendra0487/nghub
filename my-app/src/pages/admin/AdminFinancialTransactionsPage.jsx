@@ -56,8 +56,13 @@ export default function AdminFinancialTransactionsPage() {
   const [uploadFile, setUploadFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
+  // Reset to first page when filters change
   useEffect(() => {
-    // Remove authentication checks for testing
+    setCurrentPage(1)
+  }, [searchTerm, bankFilter, typeFilter, startDate, endDate, minAmount, maxAmount])
+
+  // Fetch data when page or filters change
+  useEffect(() => {
     fetchTransactions()
     fetchBanks()
   }, [currentPage, searchTerm, bankFilter, typeFilter, startDate, endDate, minAmount, maxAmount])
@@ -77,7 +82,9 @@ export default function AdminFinancialTransactionsPage() {
         ...(maxAmount && { maxAmount })
       })
 
-      const response = await fetch(`${API_BASE_URL}/api/financial-transactions?${params}`)
+      const response = await fetch(`${API_BASE_URL}/api/financial-transactions?${params}`, {
+        headers: getAuthHeaders()
+      })
 
       if (!response.ok) {
         throw new Error('Failed to fetch transactions')
@@ -348,289 +355,509 @@ export default function AdminFinancialTransactionsPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex h-screen">
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6">
+        {/* Admin Sidebar */}
+        <AdminSidebar
+          user={user}
+          onLogout={logout}
+        />
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto h-screen">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-gray-900">
+
             {/* Header */}
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-800">Financial Transactions</h1>
-              <p className="text-gray-600 mt-1">Manage your financial transactions and records</p>
-            </div>
-
-            {/* Success/Error Messages */}
-            {success && (
-              <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-                {success}
-              </div>
-            )}
-            {error && (
-              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
-              </div>
-            )}
-
-            {/* Filters and Actions */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-200 p-6 mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-                </svg>
-                Filters & Actions
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-                {/* Search */}
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">🔍 Search</label>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by description..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-
-                {/* Bank Filter */}
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">🏦 Bank</label>
-                  <select
-                    value={bankFilter}
-                    onChange={(e) => setBankFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">All Banks</option>
-                    {Array.isArray(banks) && banks.map(bank => (
-                      <option key={bank} value={bank}>{bank}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Type Filter */}
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">💰 Type</label>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">All Types</option>
-                    {types.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Date Range */}
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">📅 Date Range</label>
-                  <div className="space-y-2">
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
+            <div className="mb-8">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Financial Transactions</h1>
+                    <p className="text-sm text-gray-600 mt-1">Manage and track all financial transactions</p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={() => setShowUploadModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span>Upload CSV</span>
+                    </button>
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <span>Add Transaction</span>
+                    </button>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Amount Range */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">💵 Min Amount</label>
-                  <input
-                    type="number"
-                    value={minAmount}
-                    onChange={(e) => setMinAmount(e.target.value)}
-                    placeholder="Minimum amount"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">💵 Max Amount</label>
-                  <input
-                    type="number"
-                    value={maxAmount}
-                    onChange={(e) => setMaxAmount(e.target.value)}
-                    placeholder="Maximum amount"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
+            {/* Error and Success Messages */}
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                {error}
+                <button onClick={() => setError('')} className="ml-2 text-red-500 hover:text-red-700">×</button>
               </div>
+            )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
-                >
-                  ➕ Add Transaction
-                </button>
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
-                >
-                  📤 Upload CSV
-                </button>
-                <button
-                  onClick={handleExport}
-                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
-                >
-                  📥 Export CSV
-                </button>
-                <button
-                  onClick={clearFilters}
-                  className="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
-                >
-                  🗑️ Clear Filters
-                </button>
+            {success && (
+              <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+                {success}
+                <button onClick={() => setSuccess('')} className="ml-2 text-green-500 hover:text-green-700">×</button>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="mb-6">
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <div className="flex items-center justify-between mb-10">
+                  <div className="flex items-center space-x-6">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl blur-lg opacity-60"></div>
+                      <div className="relative p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-2xl">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black bg-gradient-to-r from-violet-300 via-purple-300 to-fuchsia-300 bg-clip-text text-transparent tracking-tight">
+                        Advanced Filters
+                      </h2>
+                      <p className="text-slate-300 text-lg font-medium">Enterprise-grade transaction management & analytics</p>
+                    </div>
+                  </div>
+                  <div className="hidden lg:flex items-center space-x-4">
+                    <div className="flex items-center space-x-3 bg-slate-700/50 rounded-2xl px-6 py-3 border border-slate-600/30">
+                      <div className="w-3 h-3 bg-violet-400 rounded-full shadow-lg shadow-violet-400/50"></div>
+                      <span className="text-slate-300 font-medium">Smart Filters</span>
+                    </div>
+                  </div>
+                </div>
+              
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-10">
+                  {/* Search */}
+                  <div className="group">
+                    <label className="block text-sm font-bold text-slate-300 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      Global Search
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search transactions..."
+                        className="w-full px-6 py-4 bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-400 transition-all duration-300 placeholder-slate-400 shadow-xl hover:shadow-2xl text-slate-100 font-medium"
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-amber-400 transition-colors p-1"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bank Filter */}
+                  <div className="group">
+                    <label className="block text-sm font-bold text-slate-300 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Banking Partner
+                    </label>
+                    <select
+                      value={bankFilter}
+                      onChange={(e) => setBankFilter(e.target.value)}
+                      className="w-full px-6 py-4 bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 transition-all duration-300 shadow-xl hover:shadow-2xl appearance-none cursor-pointer text-slate-100 font-medium"
+                    >
+                      <option value="">All Banking Partners</option>
+                      {Array.isArray(banks) && banks.map(bank => (
+                        <option key={bank} value={bank}>{bank}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Type Filter */}
+                  <div className="group">
+                    <label className="block text-sm font-bold text-slate-300 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-3 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                      Transaction Type
+                    </label>
+                    <select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      className="w-full px-6 py-4 bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-400 transition-all duration-300 shadow-xl hover:shadow-2xl appearance-none cursor-pointer text-slate-100 font-medium"
+                    >
+                      <option value="">All Transaction Types</option>
+                      {types.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Date Range */}
+                  <div className="group">
+                    <label className="block text-sm font-bold text-slate-300 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-3 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Date Range
+                    </label>
+                    <div className="space-y-4">
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full px-6 py-4 bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-400 transition-all duration-300 shadow-xl hover:shadow-2xl text-slate-100 font-medium"
+                      />
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full px-6 py-4 bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-400 transition-all duration-300 shadow-xl hover:shadow-2xl text-slate-100 font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amount Range */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                  <div className="group">
+                    <label className="block text-sm font-bold text-slate-300 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                      Minimum Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-6 top-1/2 transform -translate-y-1/2 text-amber-400 font-bold text-lg">₹</span>
+                      <input
+                        type="number"
+                        value={minAmount}
+                        onChange={(e) => setMinAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full pl-12 pr-6 py-4 bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-400 transition-all duration-300 placeholder-slate-400 shadow-xl hover:shadow-2xl text-slate-100 font-medium"
+                      />
+                    </div>
+                  </div>
+                  <div className="group">
+                    <label className="block text-sm font-bold text-slate-300 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                      Maximum Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-6 top-1/2 transform -translate-y-1/2 text-amber-400 font-bold text-lg">₹</span>
+                      <input
+                        type="number"
+                        value={maxAmount}
+                        onChange={(e) => setMaxAmount(e.target.value)}
+                        placeholder="999999.99"
+                        className="w-full pl-12 pr-6 py-4 bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-400 transition-all duration-300 placeholder-slate-400 shadow-xl hover:shadow-2xl text-slate-100 font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-6">
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="group relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-500 transform hover:scale-105 shadow-2xl hover:shadow-blue-500/25"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12"></div>
+                    <div className="relative flex items-center space-x-3">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <span>Create Transaction</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="group relative overflow-hidden bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-700 hover:via-green-700 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-500 transform hover:scale-105 shadow-2xl hover:shadow-emerald-500/25"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12"></div>
+                    <div className="relative flex items-center space-x-3">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span>Bulk Upload</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={handleExport}
+                    className="group relative overflow-hidden bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 hover:from-purple-700 hover:via-violet-700 hover:to-fuchsia-700 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-500 transform hover:scale-105 shadow-2xl hover:shadow-purple-500/25"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12"></div>
+                    <div className="relative flex items-center space-x-3">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Export Data</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={clearFilters}
+                    className="group relative overflow-hidden bg-gradient-to-r from-slate-600 via-gray-700 to-zinc-700 hover:from-slate-700 hover:via-gray-800 hover:to-zinc-800 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-500 transform hover:scale-105 shadow-2xl hover:shadow-slate-500/25"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12"></div>
+                    <div className="relative flex items-center space-x-3">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Reset Filters</span>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Transactions Table */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  Financial Transactions ({totalCount} records)
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        📅 Date
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        📝 Description
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        🏦 Bank
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        💰 Amount
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        🔄 Type
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {transactions.map((transaction) => (
-                      <tr key={transaction.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-full inline-block">
-                            {formatDate(transaction.transaction_date)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {transaction.description}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 bg-blue-50 px-3 py-1 rounded-full inline-block">
-                            {transaction.bank}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`text-lg font-bold ${
-                            transaction.type === 'Credit' ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {formatCurrency(transaction.amount)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-4 py-2 text-sm font-bold rounded-full ${
-                            transaction.type === 'Credit'
-                              ? 'bg-green-100 text-green-800 border border-green-200'
-                              : 'bg-red-100 text-red-800 border border-red-200'
-                          }`}>
-                            {transaction.type === 'Credit' ? '📈 Credit' : '📉 Debit'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                  <div className="flex-1 flex justify-between sm:hidden">
-                    <button
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                      disabled={currentPage === totalPages}
-                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
-                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        Showing{' '}
-                        <span className="font-medium">{(currentPage - 1) * limit + 1}</span>
-                        {' '}to{' '}
-                        <span className="font-medium">
-                          {Math.min(currentPage * limit, totalCount)}
-                        </span>
-                        {' '}of{' '}
-                        <span className="font-medium">{totalCount}</span>
-                        {' '}results
-                      </p>
+            <div className="relative overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-indigo-500/5"></div>
+              <div className="relative">
+                <div className="bg-gradient-to-r from-slate-50/80 to-blue-50/80 backdrop-blur-sm px-8 py-6 border-b border-gray-200/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                          Financial Transactions
+                        </h3>
+                        <p className="text-gray-600 text-sm">{totalCount} records found</p>
+                      </div>
                     </div>
-                    <div>
-                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                        <button
-                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                          disabled={currentPage === 1}
-                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              page === currentPage
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                          disabled={currentPage === totalPages}
-                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                      </nav>
+                    <div className="hidden sm:flex items-center space-x-4 text-sm text-gray-500">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span>Live Updates</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200/50">
+                    <thead className="bg-gradient-to-r from-slate-50/80 to-blue-50/80 backdrop-blur-sm">
+                      <tr>
+                        <th className="px-8 py-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>Date</span>
+                          </div>
+                        </th>
+                        <th className="px-8 py-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>Description</span>
+                          </div>
+                        </th>
+                        <th className="px-8 py-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <span>Bank</span>
+                          </div>
+                        </th>
+                        <th className="px-8 py-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                            <span>Amount</span>
+                          </div>
+                        </th>
+                        <th className="px-8 py-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            <span>Type</span>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white/50 backdrop-blur-sm divide-y divide-gray-200/30">
+                      {transactions.map((transaction, index) => (
+                        <tr key={transaction.id} className="group hover:bg-gradient-to-r hover:from-blue-50/80 hover:to-indigo-50/80 transition-all duration-300 hover:shadow-md">
+                          <td className="px-8 py-6 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="text-sm font-semibold text-gray-900 bg-gradient-to-r from-gray-100 to-gray-200 px-4 py-2 rounded-xl shadow-sm border border-gray-200/50">
+                                {formatDate(transaction.transaction_date)}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="text-sm font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                              {transaction.description}
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="text-sm font-medium text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2 rounded-xl shadow-sm border border-blue-200/50">
+                                {transaction.bank}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 whitespace-nowrap">
+                            <div className={`text-lg font-bold transition-all duration-200 ${
+                              transaction.type === 'Credit' 
+                                ? 'text-emerald-600 group-hover:text-emerald-700' 
+                                : 'text-red-600 group-hover:text-red-700'
+                            }`}>
+                              {formatCurrency(transaction.amount)}
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className={`inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl shadow-sm border transition-all duration-200 ${
+                                transaction.type === 'Credit'
+                                  ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border-emerald-200 group-hover:from-emerald-200 group-hover:to-green-200'
+                                  : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-red-200 group-hover:from-red-200 group-hover:to-rose-200'
+                              }`}>
+                                <svg className={`w-4 h-4 mr-2 ${
+                                  transaction.type === 'Credit' ? 'text-emerald-600' : 'text-red-600'
+                                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
+                                    transaction.type === 'Credit' 
+                                      ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" 
+                                      : "M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
+                                  } />
+                                </svg>
+                                {transaction.type}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="bg-gradient-to-r from-slate-50/80 to-blue-50/80 backdrop-blur-sm px-8 py-6 border-t border-gray-200/50">
+                    <div className="flex-1 flex justify-between sm:hidden mb-4">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-6 py-3 border border-gray-300 text-sm font-semibold rounded-xl text-gray-700 bg-white/80 backdrop-blur-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/80"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="ml-3 relative inline-flex items-center px-6 py-3 border border-gray-300 text-sm font-semibold rounded-xl text-gray-700 bg-white/80 backdrop-blur-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/80"
+                      >
+                        Next
+                        <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="hidden sm:flex sm:items-center sm:justify-between">
+                      <div className="flex items-center space-x-4">
+                        <p className="text-sm text-gray-700 font-medium">
+                          Showing{' '}
+                          <span className="font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-lg">{(currentPage - 1) * limit + 1}</span>
+                          {' '}to{' '}
+                          <span className="font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-lg">
+                            {Math.min(currentPage * limit, totalCount)}
+                          </span>
+                          {' '}of{' '}
+                          <span className="font-bold text-gray-900 bg-blue-100 px-2 py-1 rounded-lg">{totalCount}</span>
+                          {' '}results
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <nav className="relative z-0 inline-flex rounded-xl shadow-sm space-x-1">
+                          <button
+                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                            disabled={currentPage === 1}
+                            className="relative inline-flex items-center px-4 py-2 rounded-xl border border-gray-300 bg-white/80 backdrop-blur-sm text-sm font-semibold text-gray-500 hover:bg-gray-50 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/80"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Previous
+                          </button>
+                          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                            const page = i + 1;
+                            return (
+                              <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
+                                  page === currentPage
+                                    ? 'z-10 bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                                    : 'bg-white/80 backdrop-blur-sm border border-gray-300 text-gray-500 hover:bg-gray-50 hover:shadow-md'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            );
+                          })}
+                          {totalPages > 7 && currentPage < totalPages - 3 && (
+                            <span className="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500">
+                              ...
+                            </span>
+                          )}
+                          {totalPages > 7 && currentPage >= totalPages - 3 && (
+                            <button
+                              onClick={() => setCurrentPage(totalPages)}
+                              className="relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 bg-white/80 backdrop-blur-sm border border-gray-300 text-gray-500 hover:bg-gray-50 hover:shadow-md"
+                            >
+                              {totalPages}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                            disabled={currentPage === totalPages}
+                            className="relative inline-flex items-center px-4 py-2 rounded-xl border border-gray-300 bg-white/80 backdrop-blur-sm text-sm font-semibold text-gray-500 hover:bg-gray-50 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/80"
+                          >
+                            Next
+                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </main>
@@ -834,3 +1061,4 @@ export default function AdminFinancialTransactionsPage() {
     </div>
   )
 }
+

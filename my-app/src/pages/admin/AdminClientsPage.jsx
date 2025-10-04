@@ -28,6 +28,7 @@ export default function AdminClientsPage() {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
   const [editingClient, setEditingClient] = useState(null)
 
   // Form states
@@ -229,6 +230,145 @@ export default function AdminClientsPage() {
     })
   }
 
+  const handleUploadCSV = async (e) => {
+    e.preventDefault()
+    
+    // Get the file input element properly
+    const fileInput = e.target.querySelector('input[type="file"]')
+    const file = fileInput.files[0]
+
+    console.log('📁 File selected:', file)
+
+    if (!file) {
+      setError('Please select a file to upload')
+      setTimeout(() => setError(''), 3000)
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+    const allowedExtensions = ['.csv', '.xlsx', '.xls']
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      setError('Please select a valid CSV or Excel file (.csv, .xlsx, .xls)')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      setSuccess('')
+      
+      console.log('📁 Starting upload...')
+      console.log('📁 File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      })
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      console.log('📁 FormData created, sending request...')
+
+      // For FormData uploads, only include Authorization header, not Content-Type
+      const token = localStorage.getItem('token')
+      const headers = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      // Don't set Content-Type - let browser set it with boundary for FormData
+      
+      const response = await fetch(`${API_BASE_URL}/api/client-services/upload`, {
+        method: 'POST',
+        headers: headers,
+        body: formData
+      })
+
+      console.log('📁 Response received:', response.status, response.statusText)
+
+      const result = await response.json()
+      console.log('📁 Response data:', result)
+
+      if (response.ok) {
+        setSuccess(`✅ File processed successfully! ${result.summary?.insertedRows || 0} clients added.`)
+        setShowUploadModal(false)
+        fetchClients()
+        setTimeout(() => setSuccess(''), 5000)
+      } else {
+        console.error('📁 Upload failed:', result)
+        let errorMessage = result.error || 'Failed to upload file'
+        
+        // If it's a column error, make it more user-friendly
+        if (errorMessage.includes('Missing required columns')) {
+          errorMessage = `❌ Column Error: ${errorMessage}\n\nRequired columns: establishment_name, employer_name, email_id, mobile_number`
+        }
+        
+        setError(errorMessage)
+        setTimeout(() => setError(''), 8000) // Show longer for column errors
+      }
+    } catch (error) {
+      console.error('📁 Error uploading file:', error)
+      setError(`Upload failed: ${error.message}`)
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+
+      console.log('Exporting with params:', params.toString())
+
+      const response = await fetch(`${API_BASE_URL}/api/client-services/export?${params.toString()}`, {
+        headers: getAuthHeaders()
+      })
+
+      console.log('Export response status:', response.status)
+
+      if (response.ok) {
+        const blob = await response.blob()
+        console.log('Export blob size:', blob.size)
+        
+        if (blob.size > 0) {
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = 'client_services.csv'
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+          setSuccess('Client data exported successfully!')
+          setTimeout(() => setSuccess(''), 3000)
+        } else {
+          setError('No data to export')
+          setTimeout(() => setError(''), 3000)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Export error:', errorData)
+        setError(errorData.error || 'Failed to export data')
+        setTimeout(() => setError(''), 3000)
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      setError('Failed to export data')
+      setTimeout(() => setError(''), 3000)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const clearFilters = () => {
     setSearchTerm('')
     setStartDate('')
@@ -271,6 +411,33 @@ export default function AdminClientsPage() {
                     <p className="text-sm text-gray-600 mt-1">Manage client information and view associated services</p>
                   </div>
                   <div className="flex items-center space-x-4">
+                    <button
+                      onClick={() => setShowUploadModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span>Upload CSV</span>
+                    </button>
+                    <button
+                      onClick={handleExport}
+                      disabled={loading}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                        loading
+                          ? 'bg-purple-400 cursor-not-allowed text-white'
+                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                      }`}
+                    >
+                      {loading ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )}
+                      <span>{loading ? 'Exporting...' : 'Export CSV'}</span>
+                    </button>
                     <button
                       onClick={() => setShowAddModal(true)}
                       className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
@@ -663,6 +830,90 @@ export default function AdminClientsPage() {
                           className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700"
                         >
                           Update Client
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upload CSV Modal */}
+            {showUploadModal && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                  <div className="mt-3">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Upload Client Data</h3>
+                    
+                    {/* Loading State */}
+                    {loading && (
+                      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                          <div>
+                            <p className="text-sm font-medium text-blue-800">Uploading file...</p>
+                            <p className="text-xs text-blue-600">Please wait while we process your file</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <form onSubmit={handleUploadCSV}>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Select CSV/Excel File
+                        </label>
+                        <input
+                          type="file"
+                          name="file"
+                          accept=".csv,.xlsx,.xls"
+                          required
+                          disabled={loading}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        />
+                        <div className="mt-2 text-xs text-gray-500">
+                          <p className="font-medium">Required columns:</p>
+                          <ul className="list-disc list-inside ml-2">
+                            <li>establishment_name</li>
+                            <li>employer_name</li>
+                            <li>email_id</li>
+                            <li>mobile_number</li>
+                          </ul>
+                          <p className="mt-1">Supported formats: CSV, XLS, XLSX</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowUploadModal(false)}
+                          disabled={loading}
+                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className={`px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white flex items-center space-x-2 ${
+                            loading
+                              ? 'bg-blue-400 cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-700'
+                          }`}
+                        >
+                          {loading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                              </svg>
+                              <span>Upload File</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </form>
