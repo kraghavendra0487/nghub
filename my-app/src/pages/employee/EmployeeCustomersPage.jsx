@@ -590,7 +590,7 @@ export default function EmployeeCustomersPage() {
                       </div>
                       
                       <div className="flex space-x-2">
-                        {customerHasCard[customer.id] ? (
+                        {customer.has_card ? (
                           <button
                             onClick={() => handleViewClaims(customer)}
                             className="flex-1 px-3 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-full hover:bg-indigo-50"
@@ -670,7 +670,7 @@ export default function EmployeeCustomersPage() {
                             </div>
                           </div>
                           <div className="flex flex-col space-y-2 ml-4">
-                            {customerHasCard[customer.id] ? (
+                            {customer.has_card ? (
                               <button
                                 onClick={() => handleViewClaims(customer)}
                                 className="px-3 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-full hover:bg-indigo-50"
