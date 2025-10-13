@@ -15,14 +15,14 @@ def send_custom_email(to_email, message_body, from_email, from_password):
         s.login(from_email, from_password)
 
         # Prepare the custom message
-        message = f"""From: Email API <{from_email}>
+        message = f"""From: Ultra Compressor <{from_email}>
 To: {to_email}
-Subject: Message from Email API
+Subject: Message from Ultra Compressor
 
 {message_body}
 
 Best regards,
-Email API Team
+Ultra Compressor Team
 """
 
         # Send the email
