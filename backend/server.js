@@ -15,7 +15,8 @@ const allowedOrigins = [
   'http://localhost:5000', // Backend server
   'http://localhost:5173', // Vite dev server default port
   'http://localhost:10000',
-  'https://nghub.onrender.com'
+  'https://nghub.onrender.com',
+  'https://compressor-ljk9.onrender.com' // Email API CORS
 ];
 
 app.use(cors({

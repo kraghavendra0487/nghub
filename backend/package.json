@@ -4,7 +4,7 @@
   "description": "Node.js Express backend with SQLite",
   "main": "server.js",
   "scripts": {
-    "start": "cd ../my-app && npm run build && cd ../backend && node server.js",
+    "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {

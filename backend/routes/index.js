@@ -8,6 +8,7 @@ const claimRoutes = require('./claimRoutes');
 const meesevaRoutes = require('./meesevaRoutes');
 const clientServiceRoutes = require('./clientServiceRoutes');
 const financialTransactionRoutes = require('./financialTransactionRoutes');
+const emailRoutes = require('./emailRoutes');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -37,6 +38,7 @@ router.use('/claims', claimRoutes);
 router.use('/meeseva', meesevaRoutes);
 router.use('/client-services', clientServiceRoutes);
 router.use('/financial-transactions', financialTransactionRoutes);
+router.use('/email', emailRoutes);
 
 // Legacy endpoints for backward compatibility
 router.get('/profile', authMiddleware.protect, (req, res) => {
