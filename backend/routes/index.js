@@ -11,13 +11,14 @@ const financialTransactionRoutes = require('./financialTransactionRoutes');
 const emailRoutes = require('./emailRoutes');
 const documentRoutes = require('./documentRoutes');
 const authMiddleware = require('../middleware/authMiddleware');
+const db = require('../config/database');
 
 const router = express.Router();
 
 // Health check endpoint
 router.get('/health', async (req, res) => {
   try {
-    const result = await pool.query('SELECT NOW()');
+    const result = await db.query('SELECT NOW()');
     res.json({
       status: 'OK',
       message: 'Server is running',
