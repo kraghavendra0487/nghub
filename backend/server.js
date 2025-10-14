@@ -118,24 +118,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Test Supabase connection on startup
-const testSupabaseOnStartup = async () => {
-  try {
-    const { testSupabaseConnection } = require('./config/supabase');
-    console.log('🔍 Testing Supabase connection on startup...');
-    const isConnected = await testSupabaseConnection();
-    if (isConnected) {
-      console.log('✅ Supabase connection verified on startup');
-    } else {
-      console.error('❌ Supabase connection failed on startup');
-    }
-  } catch (error) {
-    console.error('❌ Error testing Supabase connection on startup:', error.message);
-  }
-};
-
 // Start the server
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🔗 API endpoints available at: http://localhost:${PORT}/api`);
   if (fs.existsSync(distPath)) {
@@ -143,9 +127,6 @@ app.listen(PORT, async () => {
   } else {
     console.warn('⚠ Frontend will NOT be served as the "dist" directory was not found.');
   }
-  
-  // Test Supabase connection after server starts
-  await testSupabaseOnStartup();
 });
 
 module.exports = app;
