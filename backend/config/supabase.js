@@ -89,29 +89,16 @@ const uploadDocument = async (file, bucketName = 'documents') => {
 
     console.log('✅ [SUPABASE] Admin client configured');
 
-    // Test bucket connection first
-    console.log('🔍 [SUPABASE] Testing bucket connection...');
-    const { data: buckets, error: bucketError } = await supabaseAdmin.storage.listBuckets();
-    
-    if (bucketError) {
-      console.error('❌ [SUPABASE] Bucket listing failed:', bucketError);
-      throw new Error(`Bucket connection failed: ${bucketError.message}`);
+    // Validate file buffer
+    if (!file.buffer || file.buffer.length === 0) {
+      throw new Error('File buffer is empty or invalid');
     }
 
-    console.log('📦 [SUPABASE] Available buckets:', buckets.map(b => b.name));
-    
-    const targetBucket = buckets.find(b => b.name === bucketName);
-    if (!targetBucket) {
-      console.error(`❌ [SUPABASE] Bucket '${bucketName}' not found`);
-      throw new Error(`Bucket '${bucketName}' not found. Available buckets: ${buckets.map(b => b.name).join(', ')}`);
-    }
-
-    console.log(`✅ [SUPABASE] Bucket '${bucketName}' found and accessible`);
-
-    // Generate unique filename
+    // Generate unique filename with better naming
     const timestamp = Date.now();
-    const fileExtension = file.originalname.split('.').pop();
-    const fileName = `${timestamp}-${file.originalname}`;
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const sanitizedFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `${timestamp}-${randomString}-${sanitizedFileName}`;
     const filePath = `services/${fileName}`;
 
     console.log('📝 [SUPABASE] Generated file path:', filePath);
@@ -187,10 +174,44 @@ const deleteDocument = async (filePath, bucketName = 'documents') => {
   }
 };
 
+// Function to test document upload with a sample file
+const testDocumentUpload = async () => {
+  try {
+    console.log('🧪 [SUPABASE] Testing document upload...');
+    
+    if (!supabaseAdmin) {
+      console.error('❌ [SUPABASE] Admin client not configured for test');
+      return false;
+    }
+    
+    // Create a test file buffer
+    const testFile = {
+      originalname: 'test.txt',
+      mimetype: 'text/plain',
+      size: 12,
+      buffer: Buffer.from('Hello World!')
+    };
+    
+    const result = await uploadDocument(testFile);
+    
+    if (result.success) {
+      console.log('✅ [SUPABASE] Test upload successful:', result.url);
+      return true;
+    } else {
+      console.error('❌ [SUPABASE] Test upload failed:', result.error);
+      return false;
+    }
+  } catch (error) {
+    console.error('💥 [SUPABASE] Test upload error:', error);
+    return false;
+  }
+};
+
 module.exports = { 
   supabase, 
   supabaseAdmin, 
   testSupabaseConnection, 
   uploadDocument, 
-  deleteDocument 
+  deleteDocument,
+  testDocumentUpload
 };
