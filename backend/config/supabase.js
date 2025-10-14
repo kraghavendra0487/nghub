@@ -174,6 +174,40 @@ const deleteDocument = async (filePath, bucketName = 'documents') => {
   }
 };
 
+// Function to generate signed URL for document access
+const getSignedUrl = async (filePath, bucketName = 'documents', expiresIn = 3600) => {
+  try {
+    if (!supabaseAdmin) {
+      throw new Error('Supabase admin client not configured');
+    }
+
+    console.log('🔗 [SUPABASE] Generating signed URL for:', filePath);
+    console.log('⏰ [SUPABASE] Expires in:', expiresIn, 'seconds');
+
+    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, expiresIn);
+
+    if (signedUrlError) {
+      console.error('❌ [SUPABASE] Signed URL generation failed:', signedUrlError);
+      throw new Error(`Failed to generate signed URL: ${signedUrlError.message}`);
+    }
+
+    console.log('✅ [SUPABASE] Signed URL generated successfully');
+    return {
+      success: true,
+      signedUrl: signedUrlData.signedUrl,
+      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString()
+    };
+  } catch (error) {
+    console.error('💥 [SUPABASE] Signed URL error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
 // Function to test document upload with a sample file
 const testDocumentUpload = async () => {
   try {
@@ -213,5 +247,6 @@ module.exports = {
   testSupabaseConnection, 
   uploadDocument, 
   deleteDocument,
+  getSignedUrl,
   testDocumentUpload
 };

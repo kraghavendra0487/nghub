@@ -99,7 +99,10 @@ Once configured, you can use these endpoints:
 
 - **Upload documents**: `POST /api/documents/service/:serviceId/upload`
 - **Get service documents**: `GET /api/documents/service/:serviceId`
+- **Get document details**: `GET /api/documents/:documentId`
+- **Get signed URL for document access**: `GET /api/documents/:documentId/signed-url`
 - **Delete document**: `DELETE /api/documents/:documentId`
+- **Get all documents (with pagination)**: `GET /api/documents`
 
 ## File Upload Details
 
@@ -107,6 +110,31 @@ Once configured, you can use these endpoints:
 - **Max file size**: 10MB
 - **Storage location**: Supabase Storage bucket `documents/services/`
 - **File naming**: `timestamp-randomstring-originalname`
+
+## Signed URL Access
+
+For secure file access, use signed URLs instead of direct public URLs:
+
+- **Endpoint**: `GET /api/documents/:documentId/signed-url`
+- **Authentication**: Required (JWT token)
+- **Access Control**: Users can only access their own documents (admins can access all)
+- **URL Expiry**: 1 hour (3600 seconds)
+- **Response**: Returns a time-limited signed URL for secure file access
+
+### Example Usage
+
+```javascript
+// Get signed URL for document access
+const response = await fetch('/api/documents/123/signed-url', {
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`
+  }
+});
+
+const data = await response.json();
+// data.signedUrl contains the temporary access URL
+// data.expiresAt contains the expiration timestamp
+```
 
 ## Security Notes
 

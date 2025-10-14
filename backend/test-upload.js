@@ -8,7 +8,7 @@
  */
 
 require('dotenv').config();
-const { uploadDocument, testSupabaseConnection } = require('./config/supabase');
+const { uploadDocument, testSupabaseConnection, getSignedUrl } = require('./config/supabase');
 
 async function testUpload() {
   console.log('🧪 Starting Supabase upload test...\n');
@@ -64,7 +64,21 @@ async function testUpload() {
     console.log('✅ Document upload successful!');
     console.log('🔗 Upload URL:', uploadResult.url);
     console.log('📁 File path:', uploadResult.filePath);
-    console.log('\n🎉 All tests passed! Supabase upload is working correctly.');
+    
+    // Test 4: Test signed URL generation
+    console.log('\n📋 Test 4: Testing signed URL generation...');
+    const signedUrlResult = await getSignedUrl(uploadResult.filePath, 'documents', 3600);
+    
+    if (signedUrlResult.success) {
+      console.log('✅ Signed URL generated successfully!');
+      console.log('🔗 Signed URL:', signedUrlResult.signedUrl);
+      console.log('⏰ Expires at:', signedUrlResult.expiresAt);
+    } else {
+      console.log('❌ Signed URL generation failed:', signedUrlResult.error);
+      return false;
+    }
+    
+    console.log('\n🎉 All tests passed! Supabase upload and signed URL generation are working correctly.');
     return true;
   } else {
     console.log('❌ Document upload failed:', uploadResult.error);

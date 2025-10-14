@@ -10,6 +10,7 @@ router.use(protect);
 router.post('/service/:serviceId/upload', uploadMiddleware, DocumentController.uploadDocuments);
 router.get('/service/:serviceId', DocumentController.getServiceDocuments);
 router.get('/:documentId', DocumentController.getDocument);
+router.get('/:documentId/signed-url', DocumentController.getSignedUrl);
 router.delete('/:documentId', DocumentController.deleteDocument);
 router.get('/', DocumentController.getAllDocuments);
 

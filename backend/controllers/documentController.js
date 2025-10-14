@@ -1,6 +1,6 @@
 const multer = require('multer');
 const ServicesDocument = require('../models/ServicesDocument');
-const { uploadDocument, deleteDocument } = require('../config/supabase');
+const { uploadDocument, deleteDocument, getSignedUrl } = require('../config/supabase');
 
 // Configure multer for memory storage (we'll upload directly to Supabase)
 const storage = multer.memoryStorage();
@@ -265,6 +265,75 @@ class DocumentController {
     } catch (error) {
       console.error('Error fetching documents:', error);
       res.status(500).json({ error: 'Failed to fetch documents' });
+    }
+  }
+
+  // Get signed URL for document access
+  static async getSignedUrl(req, res) {
+    console.log('🔗 [DOCUMENT CONTROLLER] Generating signed URL for document:', req.params.documentId);
+    
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      
+      console.log('📋 [DOCUMENT CONTROLLER] Request details:', {
+        documentId,
+        userId,
+        userRole
+      });
+
+      // Get document details first
+      const document = await ServicesDocument.findById(documentId);
+      
+      if (!document) {
+        console.log('❌ [DOCUMENT CONTROLLER] Document not found:', documentId);
+        return res.status(404).json({ error: 'Document not found' });
+      }
+
+      console.log('✅ [DOCUMENT CONTROLLER] Document found:', {
+        id: document.id,
+        fileName: document.file_name,
+        serviceId: document.service_id,
+        userId: document.user_id
+      });
+
+      // Check access permissions
+      if (userRole !== 'admin' && document.user_id !== userId) {
+        console.log('❌ [DOCUMENT CONTROLLER] Access denied - user not authorized');
+        return res.status(403).json({ error: 'Access denied. You can only access your own documents.' });
+      }
+
+      // Extract file path from URL
+      const urlParts = document.document_url.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const filePath = `services/${fileName}`;
+
+      console.log('📁 [DOCUMENT CONTROLLER] Extracted file path:', filePath);
+
+      // Generate signed URL (valid for 1 hour)
+      const signedUrlResult = await getSignedUrl(filePath, 'documents', 3600);
+      
+      if (!signedUrlResult.success) {
+        console.error('❌ [DOCUMENT CONTROLLER] Signed URL generation failed:', signedUrlResult.error);
+        return res.status(500).json({ error: 'Failed to generate signed URL', details: signedUrlResult.error });
+      }
+
+      console.log('✅ [DOCUMENT CONTROLLER] Signed URL generated successfully');
+
+      res.json({
+        signedUrl: signedUrlResult.signedUrl,
+        fileName: document.file_name,
+        fileSize: document.file_size,
+        mimeType: document.mime_type,
+        expiresAt: signedUrlResult.expiresAt,
+        documentId: document.id
+      });
+
+    } catch (error) {
+      console.error('💥 [DOCUMENT CONTROLLER] Signed URL error:', error);
+      console.error('💥 [DOCUMENT CONTROLLER] Error stack:', error.stack);
+      res.status(500).json({ error: 'Failed to generate signed URL' });
     }
   }
 }
