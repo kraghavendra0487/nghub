@@ -206,9 +206,17 @@ export default function AdminClientServicesDetailPage() {
 
         console.log('📁 [FRONTEND] FormData created, sending request to:', `${API_BASE_URL}/api/documents/service/${serviceData.id}/upload`)
         
+        // For FormData uploads, only include Authorization header, not Content-Type
+        const token = localStorage.getItem('token')
+        const headers = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+        // Don't set Content-Type - let browser set it with boundary for FormData
+        
         const documentResponse = await fetch(`${API_BASE_URL}/api/documents/service/${serviceData.id}/upload`, {
           method: 'POST',
-          headers: getAuthHeaders(),
+          headers: headers,
           body: formData
         })
 
