@@ -10,6 +10,13 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
+    console.log('🔍 [MULTER] File filter called for:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
+    });
+    
     // Accept common document and image types
     const allowedTypes = [
       'application/pdf',
@@ -24,12 +31,46 @@ const upload = multer({
     ];
     
     if (allowedTypes.includes(file.mimetype)) {
+      console.log('✅ [MULTER] File type accepted:', file.mimetype);
       cb(null, true);
     } else {
+      console.log('❌ [MULTER] File type rejected:', file.mimetype);
       cb(new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, PNG, GIF, XLS, XLSX files are allowed.'), false);
     }
   }
 });
+
+// Add logging middleware to see what multer is doing
+const uploadWithLogging = upload.array('documents', 5);
+const uploadMiddleware = (req, res, next) => {
+  console.log('🚀 [MULTER MIDDLEWARE] Starting file processing...');
+  console.log('📋 [MULTER MIDDLEWARE] Request details:', {
+    method: req.method,
+    url: req.url,
+    contentType: req.get('Content-Type'),
+    contentLength: req.get('Content-Length')
+  });
+  
+  uploadWithLogging(req, res, (err) => {
+    if (err) {
+      console.error('❌ [MULTER MIDDLEWARE] Multer error:', err);
+      return next(err);
+    }
+    
+    console.log('✅ [MULTER MIDDLEWARE] Files processed:', {
+      filesCount: req.files?.length || 0,
+      files: req.files?.map(f => ({
+        fieldname: f.fieldname,
+        originalname: f.originalname,
+        mimetype: f.mimetype,
+        size: f.size,
+        bufferLength: f.buffer?.length
+      })) || []
+    });
+    
+    next();
+  });
+};
 
 class DocumentController {
   // Upload documents for a service
@@ -228,4 +269,4 @@ class DocumentController {
   }
 }
 
-module.exports = { DocumentController, upload };
+module.exports = { DocumentController, upload, uploadMiddleware };
