@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import AdminSidebar from '../../components/AdminSidebar'
 import EmployeeSidebar from '../../components/EmployeeSidebar'
+import ServiceDropdown from '../../components/ServiceDropdown'
+import DocumentUpload from '../../components/DocumentUpload'
 import { useAuth } from '../../context/AuthContext'
 import API_BASE_URL from '../../config/api'
 
@@ -35,6 +37,11 @@ export default function AdminClientServicesDetailPage() {
     service_status: '',
     remarks: ''
   })
+
+  // Document states
+  const [newServiceDocuments, setNewServiceDocuments] = useState([])
+  const [editServiceDocuments, setEditServiceDocuments] = useState([])
+  const [serviceDocuments, setServiceDocuments] = useState({}) // Track documents for each service
 
   // Service statuses - with fallback options
   const [serviceStatuses, setServiceStatuses] = useState(['approved', 'rejected', 'pending'])
@@ -101,6 +108,29 @@ export default function AdminClientServicesDetailPage() {
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json()
         setServices(servicesData)
+        
+        // Fetch documents for each service
+        const documentsPromises = servicesData.map(async (service) => {
+          try {
+            const docsResponse = await fetch(`${API_BASE_URL}/api/documents/service/${service.id}`, {
+              headers: getAuthHeaders()
+            })
+            if (docsResponse.ok) {
+              const docs = await docsResponse.json()
+              return { serviceId: service.id, documents: docs }
+            }
+          } catch (error) {
+            console.error(`Error fetching documents for service ${service.id}:`, error)
+          }
+          return { serviceId: service.id, documents: [] }
+        })
+        
+        const documentsResults = await Promise.all(documentsPromises)
+        const documentsMap = {}
+        documentsResults.forEach(({ serviceId, documents }) => {
+          documentsMap[serviceId] = documents
+        })
+        setServiceDocuments(documentsMap)
       }
 
       // Fetch service statuses
@@ -140,7 +170,9 @@ export default function AdminClientServicesDetailPage() {
     try {
       setIsSubmitting(true)
       isSubmittingRef.current = true
-      const response = await fetch(`${API_BASE_URL}/api/client-services/${clientId}/services`, {
+      
+      // First, create the service
+      const serviceResponse = await fetch(`${API_BASE_URL}/api/client-services/${clientId}/services`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,14 +181,55 @@ export default function AdminClientServicesDetailPage() {
         body: JSON.stringify(newService)
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
+      if (!serviceResponse.ok) {
+        const errorData = await serviceResponse.json()
         throw new Error(errorData.error || 'Failed to add service')
+      }
+
+      const serviceData = await serviceResponse.json()
+
+      // If documents are attached, upload them
+      if (newServiceDocuments.length > 0) {
+        console.log('📁 [FRONTEND] Starting document upload process...')
+        console.log('📁 [FRONTEND] Service ID:', serviceData.id)
+        console.log('📁 [FRONTEND] Documents to upload:', newServiceDocuments.map(f => ({
+          name: f.name,
+          size: f.size,
+          type: f.type
+        })))
+
+        const formData = new FormData()
+        newServiceDocuments.forEach((file, index) => {
+          console.log(`📁 [FRONTEND] Appending file ${index + 1}:`, file.name)
+          formData.append('documents', file)
+        })
+
+        console.log('📁 [FRONTEND] FormData created, sending request to:', `${API_BASE_URL}/api/documents/service/${serviceData.id}/upload`)
+        
+        const documentResponse = await fetch(`${API_BASE_URL}/api/documents/service/${serviceData.id}/upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData
+        })
+
+        console.log('📁 [FRONTEND] Document upload response status:', documentResponse.status, documentResponse.statusText)
+        
+        if (documentResponse.ok) {
+          const uploadResult = await documentResponse.json()
+          console.log('✅ [FRONTEND] Document upload successful:', uploadResult)
+        } else {
+          const errorResult = await documentResponse.json().catch(() => ({ error: 'Unknown error' }))
+          console.error('❌ [FRONTEND] Document upload failed:', errorResult)
+          console.warn('Service created but document upload failed')
+        }
+      } else {
+        console.log('📁 [FRONTEND] No documents to upload')
       }
 
       setSuccess('Service added successfully')
       setShowAddServiceModal(false)
       setNewService({ service_name: '', service_status: '', remarks: '' })
+      setNewServiceDocuments([])
       fetchClientAndServices()
       setTimeout(() => setSuccess(''), 3000)
     } catch (error) {
@@ -399,6 +472,9 @@ export default function AdminClientServicesDetailPage() {
                           Created
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Documents
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                         Actions
                       </th>
                     </tr>
@@ -429,6 +505,30 @@ export default function AdminClientServicesDetailPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
                               {formatTimestamp(service.created_at)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-wrap gap-1">
+                            {serviceDocuments[service.id]?.length > 0 ? (
+                              serviceDocuments[service.id].map((doc, index) => (
+                                <a
+                                  key={doc.id}
+                                  href={doc.document_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                                  title={`View ${doc.file_name}`}
+                                >
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                  {doc.file_name.length > 15 ? `${doc.file_name.substring(0, 15)}...` : doc.file_name}
+                                </a>
+                              ))
+                            ) : (
+                              <span className="text-xs text-gray-500">No documents</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -496,17 +596,12 @@ export default function AdminClientServicesDetailPage() {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Service</h3>
                     <form onSubmit={handleAddService}>
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Service Name *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          disabled={isSubmittingRef.current}
+                        <ServiceDropdown
                           value={newService.service_name}
-                          onChange={(e) => setNewService({...newService, service_name: e.target.value})}
-                          placeholder="Enter service name"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          onChange={(serviceName) => setNewService({...newService, service_name: serviceName})}
+                          placeholder="Search and select a service..."
+                          disabled={isSubmittingRef.current}
+                          required={true}
                         />
                       </div>
 
@@ -539,6 +634,15 @@ export default function AdminClientServicesDetailPage() {
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                           placeholder="Additional remarks about this service..."
+                        />
+                      </div>
+
+                      <div className="mb-4">
+                        <DocumentUpload
+                          onFilesChange={setNewServiceDocuments}
+                          maxFiles={5}
+                          maxSizeMB={10}
+                          disabled={isSubmittingRef.current}
                         />
                       </div>
 
@@ -576,16 +680,11 @@ export default function AdminClientServicesDetailPage() {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Service</h3>
                     <form onSubmit={handleUpdateService}>
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Service Name *
-                        </label>
-                        <input
-                          type="text"
-                          required
+                        <ServiceDropdown
                           value={editService.service_name}
-                          onChange={(e) => setEditService({...editService, service_name: e.target.value})}
-                          placeholder="Enter service name"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          onChange={(serviceName) => setEditService({...editService, service_name: serviceName})}
+                          placeholder="Search and select a service..."
+                          required={true}
                         />
                       </div>
 

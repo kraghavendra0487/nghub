@@ -43,7 +43,9 @@ const urlencodedParser = express.urlencoded({ extended: true, limit: '50mb' });
 // Conditional JSON parsing middleware
 app.use((req, res, next) => {
   // Skip JSON parsing for the file upload routes
-  if ((req.path === '/api/financial-transactions/upload' || req.path === '/api/client-services/upload') && req.method === 'POST') {
+  if ((req.path === '/api/financial-transactions/upload' || 
+       req.path === '/api/client-services/upload' ||
+       req.path.match(/^\/api\/documents\/service\/\d+\/upload$/)) && req.method === 'POST') {
     return next();
   }
   return jsonParser(req, res, next);
@@ -52,7 +54,9 @@ app.use((req, res, next) => {
 // Conditional URL-encoded parsing middleware
 app.use((req, res, next) => {
   // Skip URL-encoded parsing for the file upload routes
-  if ((req.path === '/api/financial-transactions/upload' || req.path === '/api/client-services/upload') && req.method === 'POST') {
+  if ((req.path === '/api/financial-transactions/upload' || 
+       req.path === '/api/client-services/upload' ||
+       req.path.match(/^\/api\/documents\/service\/\d+\/upload$/)) && req.method === 'POST') {
     return next();
   }
   return urlencodedParser(req, res, next);
@@ -114,8 +118,24 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Test Supabase connection on startup
+const testSupabaseOnStartup = async () => {
+  try {
+    const { testSupabaseConnection } = require('./config/supabase');
+    console.log('🔍 Testing Supabase connection on startup...');
+    const isConnected = await testSupabaseConnection();
+    if (isConnected) {
+      console.log('✅ Supabase connection verified on startup');
+    } else {
+      console.error('❌ Supabase connection failed on startup');
+    }
+  } catch (error) {
+    console.error('❌ Error testing Supabase connection on startup:', error.message);
+  }
+};
+
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🔗 API endpoints available at: http://localhost:${PORT}/api`);
   if (fs.existsSync(distPath)) {
@@ -123,6 +143,9 @@ app.listen(PORT, () => {
   } else {
     console.warn('⚠ Frontend will NOT be served as the "dist" directory was not found.');
   }
+  
+  // Test Supabase connection after server starts
+  await testSupabaseOnStartup();
 });
 
 module.exports = app;
